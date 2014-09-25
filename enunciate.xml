@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<enunciate label="appstore_api" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:noNamespaceSchemaLocation="http://enunciate.codehaus.org/schemas/enunciate-1.25.xsd">
+
+    <api-classes>
+        <include pattern="cloudos.appstore.**"/>
+    </api-classes>
+
+    <services>
+        <rest defaultRestSubcontext="/"/>
+    </services>
+
+    <modules>
+
+        <docs docsDir="apidocs"
+              title="CloudOs AppStore - REST API"
+              copyright="Jonathan Cobb. All Rights Reserved."
+              includeExampleJson="true"/>
+
+    </modules>
+
+</enunciate>
