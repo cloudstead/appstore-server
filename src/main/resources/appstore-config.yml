@@ -19,7 +19,7 @@ jersey:
 
 database:
   driver: org.postgresql.Driver
-  url: jdbc:postgresql://localhost:5432/cloudos-appstore
+  url: jdbc:postgresql://localhost:5432/cloudos_appstore
   user: appstore
   password: appstore
 

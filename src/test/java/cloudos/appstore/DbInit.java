@@ -1,11 +1,12 @@
 package cloudos.appstore;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 
-public class DbInit {
+@Slf4j
+public class DbInit extends AppStoreITBase {
 
-    @Test public void initDb () throws Exception {
-        // noop for now, just use default schema
-    }
+    // noop for now, just use default schema
+    @Test public void initDb () throws Exception {}
 
 }

@@ -3,6 +3,6 @@
 BASE=$(cd $(dirname $0) && pwd)
 cd ${BASE}
 
-outfile=${BASE}/cloudos-appstore.sql
+outfile=${BASE}/../cloudstead-apps/apps/cloudos-appstore/files/appstore-server.sql
 
-${BASE}/../cloudos-lib/gen-sql.sh cloudos_appstore_test ${outfile}
+${BASE}/../cloudos/cloudos-lib/gen-sql.sh cloudos_appstore_test ${outfile}

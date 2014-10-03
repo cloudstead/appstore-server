@@ -13,8 +13,7 @@ import javax.ws.rs.ext.Provider;
 import java.util.HashSet;
 import java.util.Set;
 
-@Provider
-@Service
+@Provider @Service
 public class ApiAuthFilter extends AuthFilter<AppStoreAccount> {
 
     private static final Set<String> SKIP_AUTH_PATHS = new HashSet<String>(Arrays.asList(new String[] {
