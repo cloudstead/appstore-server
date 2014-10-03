@@ -6,7 +6,7 @@ bcryptRounds: 8
 springContextPath: classpath:/spring.xml
 
 http:
-  port: 8080
+  port: {{APPSTORE_SERVER_PORT}}
   baseUri: /
 
 jersey:
@@ -20,8 +20,8 @@ jersey:
 database:
   driver: org.postgresql.Driver
   url: jdbc:postgresql://localhost:5432/cloudos_appstore
-  user: appstore
-  password: appstore
+  user: cloudos_appstore
+  password: {{APPSTORE_DB_PASS}}
 
   hibernate:
     entityPackages: [ cloudos.appstore.model ]

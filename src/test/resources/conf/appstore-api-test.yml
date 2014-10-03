@@ -20,8 +20,8 @@ jersey:
 database:
   driver: org.postgresql.Driver
   url: jdbc:postgresql://localhost:5432/cloudos_appstore_test
-  user: appstore
-  password:
+  user: cloudos_appstore_test
+  password: {{APPSTORE_DB_PASS}}
 
   hibernate:
     entityPackages: [ cloudos.appstore.model ]
