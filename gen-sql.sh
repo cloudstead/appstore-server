@@ -5,4 +5,9 @@ cd ${BASE}
 
 outfile=${BASE}/../cloudstead-apps/apps/cloudos-appstore/files/appstore-server.sql
 
-${BASE}/../cloudos/cloudos-lib/gen-sql.sh cloudos_appstore_test ${outfile}
+SILENT="${1}"
+if [ ! -z "${SILENT}" ] ; then
+    ${BASE}/../cloudos/cloudos-lib/gen-sql.sh cloudos_appstore_test ${outfile} 1> /dev/null 2> /dev/null
+else
+    ${BASE}/../cloudos/cloudos-lib/gen-sql.sh cloudos_appstore_test ${outfile}
+fi
