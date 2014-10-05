@@ -7,6 +7,6 @@ import org.junit.Test;
 public class DbInit extends AppStoreITBase {
 
     // noop for now, just use default schema
-    @Test public void initDb () throws Exception {}
+    @Test public void initDatabase () throws Exception {}
 
 }
