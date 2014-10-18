@@ -27,13 +27,13 @@ public class AppStoreCrudIT extends AppStoreITBase {
         apiDocs.addNote("lookup the account we just registered");
         final AppStoreAccount found = appStoreClient.findAccount();
         assertEquals(registration.getEmail(), found.getEmail());
-        assertNull(found.getPassword().getHashedPassword());
+        assertNull(found.getHashedPassword());
         assertNotNull(found.getUuid());
         final String accountUuid = found.getUuid();
 
         apiDocs.addNote("lookup the publisher associated with the account");
         final AppStorePublisher publisher = appStoreClient.findPublisher(accountUuid);
-        assertEquals(registration.getPublisherName(), publisher.getName());
+        assertEquals(registration.getName(), publisher.getName());
 
         apiDocs.addNote("define a cloud app");
         final CloudApp app = AppStoreTestUtil.newCloudApp(appStoreClient, publisher.getUuid());
