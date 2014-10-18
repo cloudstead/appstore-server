@@ -56,7 +56,7 @@ public class AppStoreViewAppIT extends AppStoreITBase {
 
 //        final AppFootprint footprint = new AppFootprint(FOOTPRINT);
         final AppFootprint footprint = new AppFootprint();
-        footprint.setCloudApp(app.getUuid());
+        footprint.setCloudApp(app.getUuid()).setCpus(-1).setMemory(-1);
         appStoreClient.setAppFootprint(footprint);
 
         final AppFootprint appFootprint = appStoreClient.getAppFootprint(app);
