@@ -3,7 +3,7 @@
 BASE=$(cd $(dirname $0) && pwd)
 cd ${BASE}
 
-outfile=${BASE}/../cloudstead-apps/apps/cloudos-appstore/files/appstore-server.sql
+outfile=${BASE}/../cloudstead-apps/apps/cloudos-appstore/files/cloudos-appstore.sql
 
 SILENT="${1}"
 if [ ! -z "${SILENT}" ] ; then
