@@ -21,18 +21,12 @@ public class ApiAuthFilter extends AuthFilter<AppStoreAccount> {
     }));
 
     private static final Set<String> SKIP_AUTH_PREFIXES = new HashSet<String>(Arrays.asList(new String[] {
-            ApiConstants.APPSTORE_ENDPOINT
+            ApiConstants.APPSTORE_ENDPOINT,
+            ApiConstants.CLOUDS_API_ENDPOINT
     }));
 
-    private static final Set<String> PUBLISHER_PERMITTED = new HashSet<String>(Arrays.asList(new String[] {
-            ApiConstants.PUBLISHERS_ENDPOINT,
-            ApiConstants.APPS_ENDPOINT,
-            ApiConstants.APP_VERSIONS_ENDPOINT,
-            ApiConstants.ACCOUNTS_ENDPOINT
-    }));
-
-    private static final Set<String> CONSUMER_PERMITTED = new HashSet<String>(Arrays.asList(new String[] {
-
+    private static final Set<String> ADMIN_PATHS = new HashSet<String>(Arrays.asList(new String[] {
+            ApiConstants.CLOUDS_ENDPOINT
     }));
 
     @Autowired @Getter private ApiAuthProvider authProvider;
@@ -46,9 +40,8 @@ public class ApiAuthFilter extends AuthFilter<AppStoreAccount> {
     @Override
     protected boolean isPermitted(AppStoreAccount principal, ContainerRequest request) {
         final String uri = request.getRequestUri().getPath();
-        if (principal.isPublisher()) return isPermitted(uri, PUBLISHER_PERMITTED);
-        if (principal.isConsumer()) return isPermitted(uri, CONSUMER_PERMITTED);
-        return false;
+        if (principal.isAdmin()) return true;
+        return !isPermitted(uri, ADMIN_PATHS);
     }
 
     private boolean isPermitted(String uri, Set<String> permitted) {

@@ -1,12 +1,12 @@
 serverName: cloudos-appstore
 
-publicUriBase: http://localhost:9980
+publicUriBase: https://127.0.0.1
 
 bcryptRounds: 2
 springContextPath: classpath:/spring.xml
 
 http:
-  port: 9980
+  port: 0
   baseUri: /
 
 jersey:

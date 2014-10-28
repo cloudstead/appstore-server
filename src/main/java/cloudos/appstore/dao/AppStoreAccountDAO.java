@@ -1,35 +1,35 @@
 package cloudos.appstore.dao;
 
 import cloudos.appstore.model.AppStoreAccount;
-import org.cobbzilla.wizard.dao.AbstractCRUDDAO;
+import org.cobbzilla.util.collection.MapBuilder;
+import org.cobbzilla.wizard.dao.UniquelyNamedEntityDAO;
 import org.cobbzilla.wizard.validation.UniqueValidatorDao;
+import org.cobbzilla.wizard.validation.UniqueValidatorDaoHelper;
 import org.springframework.stereotype.Repository;
 
+import java.util.Map;
+
 @Repository
-public class AppStoreAccountDAO extends AbstractCRUDDAO<AppStoreAccount> implements UniqueValidatorDao {
+public class AppStoreAccountDAO extends UniquelyNamedEntityDAO<AppStoreAccount> implements UniqueValidatorDao {
 
     public AppStoreAccount findByEmail(String email) { return findByUniqueField("email", email); }
+    public AppStoreAccount findByMobilePhone(String mobilePhone) { return findByUniqueField("mobilePhone", mobilePhone); }
 
     @Override
-    public boolean isUnique(String uniqueFieldName, Object uniqueValue) {
-        if (uniqueValue == null) return true;
-        if (uniqueFieldName.endsWith("email")) return findByEmail(uniqueValue.toString()) == null;
-        throw new IllegalArgumentException("entityExists: unsupported uniqueFieldName: "+uniqueFieldName);
-    }
+    protected Map<String, UniqueValidatorDaoHelper.Finder<AppStoreAccount>> getUniqueHelpers() {
 
-    @Override
-    public boolean isUnique(String uniqueFieldName, Object uniqueValue, String idFieldName, Object idValue) {
-        if (uniqueValue == null) return true;
-        if (uniqueFieldName.endsWith("email")) {
-            final AppStoreAccount account = findByEmail(uniqueValue.toString());
-            if (account == null) return true;
+        final Map<String, UniqueValidatorDaoHelper.Finder<AppStoreAccount>> helpers = super.getUniqueHelpers();
 
-            switch (idFieldName) {
-                case "uuid": return account.getUuid().equals(idValue);
-                default: throw new IllegalArgumentException("isUnique: unsupported idFieldName: "+idFieldName);
-            }
-        }
-        throw new IllegalArgumentException("isUnique: unsupported uniqueFieldName: "+uniqueFieldName);
+        helpers.putAll(MapBuilder.<String, UniqueValidatorDaoHelper.Finder<AppStoreAccount>>build(new Object[][]{
+                {"email", new UniqueValidatorDaoHelper.Finder<AppStoreAccount>() {
+                    @Override public AppStoreAccount find(Object query) { return findByEmail(query.toString()); }
+                }},
+                {"mobilePhone", new UniqueValidatorDaoHelper.Finder<AppStoreAccount>() {
+                    @Override public AppStoreAccount find(Object query) { return findByMobilePhone(query.toString()); }
+                }},
+        }));
+
+        return helpers;
     }
 
 }

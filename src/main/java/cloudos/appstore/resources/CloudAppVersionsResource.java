@@ -115,14 +115,14 @@ public class CloudAppVersionsResource {
             final List<ConstraintViolationBean> violations = new ArrayList<>(3);
 
             // server config CANNOT be changed, create a new version instead
-            if (!proposed.getServerConfigUrlSha().equals(version.getServerConfigUrlSha())
-                    || !proposed.getServerConfigUrl().equals(version.getServerConfigUrl())) {
+            if (!proposed.getBundleUrlSha().equals(version.getBundleUrlSha())
+                    || !proposed.getBundleUrl().equals(version.getBundleUrl())) {
                 violations.add(new ConstraintViolationBean(ERR_APP_CANNOT_CHANGE_SERVER_CONFIG));
             }
             // force verifyAssets to return no violations for serverConfig (it will check existing assets)
             // we just validated it manually above
-            proposed.setServerConfigUrlSha(version.getServerConfigUrlSha());
-            proposed.setServerConfigUrl(version.getServerConfigUrl());
+            proposed.setBundleUrlSha(version.getBundleUrlSha());
+            proposed.setBundleUrl(version.getBundleUrl());
 
             verifyAssets(proposed, violations);
             if (!violations.isEmpty()) return ResourceUtil.invalid(violations);
@@ -203,9 +203,13 @@ public class CloudAppVersionsResource {
     private void verifyAssets(CloudAppVersion proposed, List<ConstraintViolationBean> violations) {
         final AppStoreConfiguration storeConfig = configuration.getAppStore();
         final AppMutableData data = proposed.getData();
+        if (data == null) {
+            violations.add(new ConstraintViolationBean(ERR_DATA_EMPTY));
+            return;
+        }
         AssetUtil.verifyAsset(SMALL_ICON_URL, data.getSmallIconUrl(), data.getSmallIconUrlSha(), violations, storeConfig.getAllowedAssetSchemes());
         AssetUtil.verifyAsset(LARGE_ICON_URL, data.getLargeIconUrl(), data.getLargeIconUrlSha(), violations, storeConfig.getAllowedAssetSchemes());
-        AssetUtil.verifyAsset(SERVER_CONFIG, proposed.getServerConfigUrl(), proposed.getServerConfigUrlSha(), violations, storeConfig.getAllowedAssetSchemes());
+        AssetUtil.verifyAsset(BUNDLE_URL, proposed.getBundleUrl(), proposed.getBundleUrlSha(), violations, storeConfig.getAllowedAssetSchemes());
     }
 
 }

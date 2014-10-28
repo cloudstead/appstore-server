@@ -12,7 +12,6 @@ import cloudos.appstore.model.AppStorePublisherMember;
 import cloudos.appstore.model.support.ApiToken;
 import cloudos.appstore.model.support.AppStoreAccountRegistration;
 import cloudos.appstore.model.support.RefreshTokenRequest;
-import cloudos.appstore.model.support.RegistrationType;
 import lombok.extern.slf4j.Slf4j;
 import org.cobbzilla.wizard.model.HashedPassword;
 import org.cobbzilla.wizard.resources.ResourceUtil;
@@ -51,30 +50,21 @@ public class AppStoreAuthResource {
         final AppStoreAccount account = new AppStoreAccount().populate(registration);
         account.setHashedPassword(new HashedPassword(registration.getPassword()));
 
-        // todo: store versions somewhere, use latest version
-        if (registration.getRegistrationType() == RegistrationType.publisher) {
-            account.setPublisherTosVersion(1);
-        } else {
-            account.setConsumerTosVersion(1);
-        }
-
         if (!violations.isEmpty()) return ResourceUtil.invalid(violations);
 
         final AppStoreAccount createdAccount = accountDAO.create(account);
         final String uuid = createdAccount.getUuid();
 
-        if (registration.getRegistrationType() == RegistrationType.publisher) {
-            final AppStorePublisher publisher = new AppStorePublisher();
-            publisher.setUuid(uuid);
-            publisher.setOwner(uuid);
-            publisher.setName(registration.getName());
-            final AppStorePublisher createdPublisher = publisherDAO.create(publisher);
+        final AppStorePublisher publisher = new AppStorePublisher();
+        publisher.setUuid(uuid);
+        publisher.setOwner(uuid);
+        publisher.setName(registration.getName());
+        final AppStorePublisher createdPublisher = publisherDAO.create(publisher);
 
-            final AppStorePublisherMember member = new AppStorePublisherMember();
-            member.setAccount(createdAccount.getUuid());
-            member.setPublisher(createdPublisher.getUuid());
-            memberDAO.create(member);
-        }
+        final AppStorePublisherMember member = new AppStorePublisherMember();
+        member.setAccount(createdAccount.getUuid());
+        member.setPublisher(createdPublisher.getUuid());
+        memberDAO.create(member);
 
         ApiToken token = tokenDAO.generateNewToken(uuid);
 
@@ -105,6 +95,13 @@ public class AppStoreAuthResource {
 
         // not enough to work with
         return ResourceUtil.forbidden();
+    }
+
+    @DELETE
+    @Path("/{token}")
+    public Response deleteToken (@PathParam("token") String token) {
+        tokenDAO.cancel(token);
+        return Response.ok().build();
     }
 
 }

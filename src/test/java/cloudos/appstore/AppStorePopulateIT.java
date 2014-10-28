@@ -58,8 +58,8 @@ public class AppStorePopulateIT extends AppStoreITBase {
         data.setLargeIconUrlSha(sha256_url(data.getLargeIconUrl()));
         version.setData(data);
 
-        version.setServerConfigUrl(assetUrl(template.serverConfigUrl));
-        version.setServerConfigUrlSha(sha256_url(version.getServerConfigUrl()));
+        version.setBundleUrl(assetUrl(template.serverConfigUrl));
+        version.setBundleUrlSha(sha256_url(version.getBundleUrl()));
 
         version = appStoreClient.defineAppVersion(version);
 
