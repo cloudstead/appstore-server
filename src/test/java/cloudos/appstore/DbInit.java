@@ -22,9 +22,7 @@ import org.springframework.orm.hibernate3.HibernateTemplate;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 
@@ -35,6 +33,11 @@ public class DbInit extends AppStoreITBase {
             "email", "gitlab", "jira", "kanban", "kandan", "owncloud", "phabricator", "phplist",
             "roundcube", "roundcube-calendar" //, "limesurvey", "etherpad"
     };
+
+    private static final Set<String> INTERACTIVE_APPS = new HashSet<>(Arrays.asList(new String[] {
+            "gitlab", "jira", "kanban", "kandan", "owncloud", "phabricator", "phplist",
+            "roundcube", "roundcube-calendar", "limesurvey", "etherpad"
+    }));
 
     private Map<String, AppMutableData> appData = MapBuilder.build(new Object[][] {
             { "email", new AppMutableData()
@@ -123,6 +126,7 @@ public class DbInit extends AppStoreITBase {
                     .setApp(app.getUuid())
                     .setAuthor(admin.getUuid())
                     .setAppStatus(CloudAppStatus.NEW);
+            version.setInteractive(INTERACTIVE_APPS.contains(app.getName()));
             version = appStoreClient.defineAppVersion(version);
             version.setAppStatus(CloudAppStatus.PUBLISHED);
             appStoreClient.updateAppVersion(version);
@@ -138,11 +142,17 @@ public class DbInit extends AppStoreITBase {
     private AppMutableData getAppData(CloudApp app) throws Exception {
         final String largeIcon = "http://cloudstead.io/downloads/icons/"+app.getName()+"-large.png";
         final String smallIcon = "http://cloudstead.io/downloads/icons/"+app.getName()+"-small.png";
-        return appData.get(app.getName())
+        final String smallIconUrlSha = ShaUtil.sha256_url(smallIcon);
+        final AppMutableData mutableData = appData.get(app.getName())
                 .setLargeIconUrl(largeIcon)
                 .setLargeIconUrlSha(ShaUtil.sha256_url(largeIcon))
                 .setSmallIconUrl(smallIcon)
-                .setSmallIconUrlSha(ShaUtil.sha256_url(smallIcon));
+                .setSmallIconUrlSha(smallIconUrlSha);
+        if (INTERACTIVE_APPS.contains(app.getName())) {
+            mutableData.setTaskBarIconUrl(smallIcon)
+                       .setTaskBarIconUrlSha(smallIconUrlSha);
+        }
+        return mutableData;
     }
 
     private List<CloudApp> getApps() {
