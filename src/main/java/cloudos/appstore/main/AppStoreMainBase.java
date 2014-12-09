@@ -1,6 +1,7 @@
 package cloudos.appstore.main;
 
 import cloudos.appstore.client.AppStoreApiClient;
+import cloudos.appstore.model.support.ApiToken;
 import cloudos.appstore.model.support.RefreshTokenRequest;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -52,8 +53,8 @@ public abstract class AppStoreMainBase<OPT extends AppStoreMainOptions> {
                     .setEmail(options.getAccount())
                     .setPassword(options.getPassword());
             final AppStoreApiClient api = getApiClient();
-            final String token = fromJson(api.post(AUTH_ENDPOINT, toJson(loginRequest)).json, String.class);
-            api.pushToken(token);
+            final ApiToken token = fromJson(api.post(AUTH_ENDPOINT, toJson(loginRequest)).json, ApiToken.class);
+            api.pushToken(token.getToken());
 
         } catch (Exception e) {
             throw new IllegalStateException("Error logging in: "+e, e);
