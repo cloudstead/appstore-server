@@ -26,7 +26,8 @@ public class ApiAuthFilter extends AuthFilter<AppStoreAccount> {
     }));
 
     private static final Set<String> ADMIN_PATHS = new HashSet<String>(Arrays.asList(new String[] {
-            ApiConstants.CLOUDS_ENDPOINT
+            ApiConstants.CLOUDS_ENDPOINT,
+            ApiConstants.SEARCH_ENDPOINT
     }));
 
     @Autowired @Getter private ApiAuthProvider authProvider;

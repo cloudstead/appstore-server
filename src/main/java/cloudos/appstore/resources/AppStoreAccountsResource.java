@@ -30,7 +30,6 @@ public class AppStoreAccountsResource {
     @Autowired private AppStoreAccountDAO accountDAO;
     @Autowired private AppStorePublisherDAO publisherDAO;
     @Autowired private AppStorePublisherMemberDAO memberDAO;
-
     @Autowired private AppStorePublishersResource publishersResource;
 
     @GET
