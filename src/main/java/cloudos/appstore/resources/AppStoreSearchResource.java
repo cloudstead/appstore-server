@@ -4,6 +4,7 @@ import cloudos.appstore.ApiConstants;
 import cloudos.appstore.dao.AppStoreAccountDAO;
 import cloudos.appstore.dao.AppStorePublisherDAO;
 import cloudos.appstore.dao.CloudAccountDAO;
+import cloudos.appstore.dao.PublishedAppDAO;
 import cloudos.appstore.model.AppStoreAccount;
 import cloudos.appstore.model.support.AppStoreQuery;
 import com.sun.jersey.api.core.HttpContext;
@@ -30,6 +31,7 @@ public class AppStoreSearchResource {
     @Autowired private AppStoreAccountDAO accountDAO;
     @Autowired private AppStorePublisherDAO publisherDAO;
     @Autowired private CloudAccountDAO cloudAccountDAO;
+    @Autowired private PublishedAppDAO appDAO;
 
     @POST
     public Response search (@Context HttpContext context,
@@ -49,6 +51,9 @@ public class AppStoreSearchResource {
                 break;
             case cloud:
                 results = cloudAccountDAO.search(query);
+                break;
+            case app:
+                results = appDAO.search(query);
                 break;
             default:
                 return ResourceUtil.invalid("err.type.invalid");

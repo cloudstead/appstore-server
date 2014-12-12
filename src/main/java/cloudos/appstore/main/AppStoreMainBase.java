@@ -27,15 +27,13 @@ public abstract class AppStoreMainBase<OPT extends AppStoreMainOptions> {
         parser.parseArgument(args);
     }
 
-    @Getter(value= AccessLevel.PROTECTED, lazy=true) private final AppStoreApiClient apiClient = initApiClient();
+    @Getter(value=AccessLevel.PROTECTED, lazy=true) private final AppStoreApiClient apiClient = initApiClient();
 
-    private AppStoreApiClient initApiClient() {
-        return new AppStoreApiClient(getOptions().getApiBase());
-    }
+    private AppStoreApiClient initApiClient() { return new AppStoreApiClient(getOptions().getApiBase()); }
 
     protected static void main(Class<? extends AppStoreMainBase> clazz, String[] args) {
         try {
-            AppStoreMainBase m = clazz.newInstance();
+            final AppStoreMainBase m = clazz.newInstance();
             m.setArgs(args);
             m.login();
             m.run();

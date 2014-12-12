@@ -11,9 +11,7 @@ public class AppStoreQueryMain extends AppStoreMainBase<AppStoreQueryOptions> {
 
     @Override protected AppStoreQueryOptions initOptions() { return new AppStoreQueryOptions(); }
 
-    public static void main(String[] args) {
-        main(AppStoreQueryMain.class, args);
-    }
+    public static void main(String[] args) { main(AppStoreQueryMain.class, args); }
 
     @Override protected void run() throws Exception {
 
