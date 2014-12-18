@@ -31,7 +31,7 @@ public class DbInit extends AppStoreITBase {
 
     private static final String[] APP_NAMES = new String[]{
             "email", "gitlab", "jira", "kanban", "kandan", "owncloud", "phabricator", "phplist",
-            "roundcube", "roundcube-calendar" //, "limesurvey", "etherpad"
+            "roundcube", "roundcube-calendar", "limesurvey", "etherpad"
     };
 
     private static final Set<String> INTERACTIVE_APPS = new HashSet<>(Arrays.asList(new String[] {
@@ -70,6 +70,12 @@ public class DbInit extends AppStoreITBase {
             { "roundcube-calendar", new AppMutableData()
                     .setBlurb("Web calendar for your cloudstead")
                     .setDescription("Web calendar for your cloudstead") },
+            { "limesurvey", new AppMutableData()
+                    .setBlurb("Web surveys, made easy.")
+                    .setDescription("Create surveys, send them out and view reports on the responses") },
+            { "etherpad", new AppMutableData()
+                    .setBlurb("Collaborative document editing.")
+                    .setDescription("Create documents and let multiple people work on them together") },
     });
 
     @Test public void initDatabase () throws Exception {
@@ -149,8 +155,8 @@ public class DbInit extends AppStoreITBase {
                 .setSmallIconUrl(smallIcon)
                 .setSmallIconUrlSha(smallIconUrlSha);
         if (INTERACTIVE_APPS.contains(app.getName())) {
-            mutableData.setTaskBarIconUrl(smallIcon)
-                       .setTaskBarIconUrlSha(smallIconUrlSha);
+            mutableData.setTaskbarIconUrl(smallIcon)
+                       .setTaskbarIconUrlSha(smallIconUrlSha);
         }
         return mutableData;
     }
