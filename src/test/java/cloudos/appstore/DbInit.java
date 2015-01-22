@@ -13,7 +13,6 @@ import org.cobbzilla.util.security.ShaUtil;
 import org.cobbzilla.util.system.CommandShell;
 import org.cobbzilla.wizard.dao.SearchResults;
 import org.cobbzilla.wizard.model.ResultPage;
-import org.cobbzilla.wizard.model.SemanticVersion;
 import org.hibernate.classic.Session;
 import org.hibernate.jdbc.Work;
 import org.junit.Test;
@@ -125,7 +124,7 @@ public class DbInit extends AppStoreITBase {
             app = appStoreClient.defineApp(app);
             final String bundleUrl = "http://cloudstead.io/downloads/" + app.getName() + "-bundle.tar.gz";
             CloudAppVersion version = (CloudAppVersion) new CloudAppVersion()
-                    .setVersion(new SemanticVersion(1, 0, 0))
+                    .setVersion("1.0.0")
                     .setBundleUrl(bundleUrl)
                     .setBundleUrlSha(ShaUtil.sha256_url(bundleUrl))
                     .setData(getAppData(app))
