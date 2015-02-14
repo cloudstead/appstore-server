@@ -4,7 +4,7 @@ import cloudos.appstore.model.*;
 import cloudos.appstore.model.support.ApiToken;
 import cloudos.appstore.model.support.AppStoreAccountRegistration;
 import cloudos.appstore.test.AppStoreTestUtil;
-import org.cobbzilla.wizard.client.NotFoundException;
+import org.cobbzilla.wizard.api.NotFoundException;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
