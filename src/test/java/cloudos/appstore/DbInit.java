@@ -88,7 +88,7 @@ public class DbInit extends AppStoreITBase {
                 .setPassword(password)
                 .setLastName("admin").setFirstName("admin")
                 .setEmail(user+"@example.com")
-                .setMobilePhoneCountryCode(1).setMobilePhone("n/a")
+                .setMobilePhoneCountryCode(1).setMobilePhone("n/a-------")
                 .setName(user);
 
         adminToken = appStoreClient.registerAccount(reg).getToken();
