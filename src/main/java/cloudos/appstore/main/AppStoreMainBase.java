@@ -10,6 +10,7 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 
 import static cloudos.appstore.ApiConstants.AUTH_ENDPOINT;
+import static org.cobbzilla.util.daemon.ZillaRuntime.die;
 import static org.cobbzilla.util.json.JsonUtil.fromJson;
 import static org.cobbzilla.util.json.JsonUtil.toJson;
 
@@ -55,7 +56,7 @@ public abstract class AppStoreMainBase<OPT extends AppStoreMainOptions> {
             api.pushToken(token.getToken());
 
         } catch (Exception e) {
-            throw new IllegalStateException("Error logging in: "+e, e);
+            die("Error logging in: " + e, e);
         }
     }
 

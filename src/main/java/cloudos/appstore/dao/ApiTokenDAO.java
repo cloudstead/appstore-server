@@ -8,6 +8,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.concurrent.TimeUnit;
 
+import static org.cobbzilla.util.daemon.ZillaRuntime.die;
+
 @Repository
 public class ApiTokenDAO {
 
@@ -25,10 +27,10 @@ public class ApiTokenDAO {
         final ApiToken token = newToken();
         try {
             if (!client.add(token.getToken(), EXPIRATION, accountUuid)) {
-                throw new IllegalStateException("generateNewToken: error writing to memcached: call returned false");
+                die("generateNewToken: error writing to memcached: call returned false");
             }
         } catch (Exception e) {
-            throw new IllegalStateException("generateNewToken: error writing to memcached: "+e, e);
+            die("generateNewToken: error writing to memcached: "+e, e);
         }
         return token;
     }
@@ -43,7 +45,7 @@ public class ApiTokenDAO {
         try {
             return client.get(token);
         } catch (Exception e) {
-            throw new IllegalStateException("findAccount: error reading from memcached: "+e, e);
+            die("findAccount: error reading from memcached: "+e, e);
         }
     }
 
@@ -51,7 +53,7 @@ public class ApiTokenDAO {
         try {
             client.delete(token);
         } catch (Exception e) {
-            throw new IllegalStateException("cancel: error deleting from memcached: "+e, e);
+            die("cancel: error deleting from memcached: " + e, e);
         }
     }
 
@@ -71,7 +73,7 @@ public class ApiTokenDAO {
             return newToken;
 
         } catch (Exception e) {
-            throw new IllegalStateException("refreshToken: error talking to memcached: "+e, e);
+            die("refreshToken: error talking to memcached: "+e, e); return null;
         }
     }
 }

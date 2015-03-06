@@ -5,6 +5,8 @@ import lombok.Setter;
 import org.cobbzilla.util.string.StringUtil;
 import org.kohsuke.args4j.Option;
 
+import static org.cobbzilla.util.daemon.ZillaRuntime.die;
+
 public class AppStoreMainOptions {
 
     public static final String PASSWORD_ENV_VAR = "CAS_PASS";
@@ -25,7 +27,7 @@ public class AppStoreMainOptions {
 
     private String initPassword() {
         final String pass = System.getenv(PASSWORD_ENV_VAR);
-        if (StringUtil.empty(pass)) throw new IllegalStateException("No "+PASSWORD_ENV_VAR+" defined in environment");
+        if (StringUtil.empty(pass)) die("No " + PASSWORD_ENV_VAR + " defined in environment");
         return pass;
     }
 }
