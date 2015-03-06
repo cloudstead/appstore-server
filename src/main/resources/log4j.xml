@@ -14,7 +14,10 @@
 
     <!-- 3rdparty Loggers -->
     <logger name="org.springframework">
-        <level value="info" />
+        <level value="warn" />
+    </logger>
+    <logger name="com.google.code.yanf4j">
+        <level value="error" />
     </logger>
 
     <!-- Root Logger -->
