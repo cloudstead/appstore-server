@@ -45,7 +45,7 @@ public class ApiTokenDAO {
         try {
             return client.get(token);
         } catch (Exception e) {
-            die("findAccount: error reading from memcached: "+e, e);
+            return die("findAccount: error reading from memcached: "+e, e);
         }
     }
 
