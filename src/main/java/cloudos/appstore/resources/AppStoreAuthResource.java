@@ -37,10 +37,11 @@ public class AppStoreAuthResource {
     @Autowired private AppStorePublisherDAO publisherDAO;
     @Autowired private AppStorePublisherMemberDAO memberDAO;
 
-    @GET
-    public Response check () {
-        return Response.ok().build();
-    }
+    /**
+     * A simple health check. if this is reachable and returns 200, we know at least REST and Spring started OK.
+     * @return an empty object
+     */
+    @GET public ApiToken check() { return new ApiToken(); }
 
     @PUT
     public Response register (@Valid AppStoreAccountRegistration registration) {
