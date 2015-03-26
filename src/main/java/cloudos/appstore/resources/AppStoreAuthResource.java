@@ -37,6 +37,11 @@ public class AppStoreAuthResource {
     @Autowired private AppStorePublisherDAO publisherDAO;
     @Autowired private AppStorePublisherMemberDAO memberDAO;
 
+    @GET
+    public Response check () {
+        return Response.ok().build();
+    }
+
     @PUT
     public Response register (@Valid AppStoreAccountRegistration registration) {
 
