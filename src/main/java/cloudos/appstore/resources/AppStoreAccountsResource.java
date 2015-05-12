@@ -51,11 +51,66 @@ public class AppStoreAccountsResource {
         return Response.ok(account).build();
     }
 
+    @POST
+    @Path("/{uuid}")
+    public Response updateAccount (@Context HttpContext context,
+                                   @PathParam("uuid") String uuid,
+                                   AppStoreAccount updated) {
+        AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        if (!account.getUuid().equals(uuid)) {
+            if (!account.isAdmin()) return ResourceUtil.forbidden();
+            account = accountDAO.findByUuid(uuid);
+            if (account == null) return ResourceUtil.notFound(uuid);
+        }
+
+        // non-admins cannot update these fields
+        if (!account.isAdmin()) {
+            updated.setAdmin(false);
+            updated.setSuspended(account.isSuspended());
+            updated.setEmailVerified(account.isEmailVerified());
+            updated.setEmailVerificationCode(null);
+            updated.setEmailVerificationCodeCreatedAt(null);
+            updated.setHashedPassword(null);
+            updated.setTosVersion(null);
+            updated.setLastLogin(null);
+            updated.setAuthId(null);
+        }
+        account.update(updated);
+        accountDAO.update(account);
+        return Response.ok(account).build();
+    }
+
+    @DELETE
+    @Path("/${uuid}")
+    public Response deleteAccount(@Context HttpContext context,
+                                  @PathParam("uuid") String uuid) {
+
+        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        if (!account.isAdmin() && !account.getUuid().equals(uuid)) return ResourceUtil.forbidden();
+
+        final AppStoreAccount toDelete = accountDAO.findByUuid(uuid);
+
+        Response deleteStatus = deleteAccount(context, toDelete);
+        if (deleteStatus != null) return deleteStatus;
+
+        return Response.ok().build();
+    }
+
     @DELETE
     public Response deleteAccount(@Context HttpContext context) {
 
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
+        Response deleteStatus = deleteAccount(context, account);
+        if (deleteStatus != null) return deleteStatus;
+
+        // remove the current API token
+        tokenDAO.cancel(account.getApiToken());
+
+        return Response.ok().build();
+    }
+
+    protected Response deleteAccount(@Context HttpContext context, AppStoreAccount account) {
         Response deleteStatus;
 
         // delete any publishers owned by the member (this will also delete all members and apps for those publishers)
@@ -75,10 +130,6 @@ public class AppStoreAccountsResource {
 
         // nuke 'em
         accountDAO.delete(account.getUuid());
-
-        // remove the current API token
-        tokenDAO.cancel(account.getApiToken());
-
-        return Response.ok().build();
+        return null;
     }
 }

@@ -6,4 +6,5 @@ if [ -z ${DEPLOY} ] ; then
   exit 1
 fi
 
-# Nothing special to do for now
+# copy email templates
+mkdir -p ${DEPLOY}/email && cp email/* ${DEPLOY}/email

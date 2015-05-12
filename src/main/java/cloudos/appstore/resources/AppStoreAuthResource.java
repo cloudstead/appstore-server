@@ -70,9 +70,10 @@ public class AppStoreAuthResource {
         final AppStorePublisherMember member = new AppStorePublisherMember();
         member.setAccount(createdAccount.getUuid());
         member.setPublisher(createdPublisher.getUuid());
+        member.setActive(true);
         memberDAO.create(member);
 
-        ApiToken token = tokenDAO.generateNewToken(uuid);
+        final ApiToken token = tokenDAO.generateNewToken(uuid);
 
         return Response.ok(token).build();
     }

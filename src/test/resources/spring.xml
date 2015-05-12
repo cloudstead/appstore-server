@@ -19,14 +19,14 @@
     <context:component-scan base-package="cloudos.appstore.auth"/>
     <context:component-scan base-package="cloudos.appstore.resources"/>
 
-    <!-- Templated mail sender -->
-    <context:component-scan base-package="org.cobbzilla.mail.service"/>
-
     <!-- MQ client -->
     <!--<context:component-scan base-package="org.cobbzilla.wizard.spring.config.mq"/>-->
     <!--<context:component-scan base-package="org.cobbzilla.mq"/>-->
 
     <!-- validator -->
     <bean id="uniqueValidator" class="org.cobbzilla.wizard.validation.UniqueValidator"/>
+
+    <!-- Mock templated mail sender -->
+    <bean class="org.cobbzilla.mail.sender.mock.MockTemplatedMailService"/>
 
 </beans>

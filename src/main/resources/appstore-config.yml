@@ -5,6 +5,23 @@ publicUriBase: {{APPSTORE_PUBLIC_URI_BASE}}
 bcryptRounds: 8
 springContextPath: classpath:/spring.xml
 
+emailTemplateRoot: {{EMAIL_TEMPLATE_ROOT}}
+
+emailSenderNames:
+  welcome:
+    fromName:  {{WELCOME_SENDER_NAME}}
+    fromEmail: {{WELCOME_SENDER_EMAIL}}
+  invite_to_publisher:
+    fromName: {{INVITE_TO_PUBLISHER_SENDER_NAME}}
+    fromEmail: {{INVITE_TO_PUBLISHER_SENDER_EMAIL}}
+
+smtp:
+  host: smtp.sendgrid.net
+  port: 587
+  user: {{SENDGRID_API_USER}}
+  password: {{SENDGRID_API_KEY}}
+  tlsEnabled: true
+
 http:
   port: {{APPSTORE_SERVER_PORT}}
   baseUri: /

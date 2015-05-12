@@ -49,9 +49,11 @@ public class AppStorePopulateIT extends AppStoreITBase {
         CloudAppVersion version = new CloudAppVersion();
         version.setApp(app.getUuid());
         version.setAppStatus(CloudAppStatus.NEW);
+        version.setVersion("0.0.1");
 
         final AppMutableData data = new AppMutableData();
         data.setDescription(template.description);
+        data.setBlurb(template.description.substring(0, 10));
         data.setSmallIconUrl(assetUrl(template.smallIconUrl));
         data.setSmallIconUrlSha(sha256_url(data.getSmallIconUrl()));
         data.setLargeIconUrl(assetUrl(template.largeIconUrl));

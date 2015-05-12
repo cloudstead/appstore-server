@@ -25,4 +25,8 @@ public class AppStorePublisherMemberDAO extends AbstractCRUDDAO<AppStorePublishe
     public List<AppStorePublisherMember> findByPublisher(String publisher) {
         return list(criteria().add(Restrictions.eq("publisher", publisher)));
     }
+
+    public AppStorePublisherMember findByActivationCode(String code) {
+        return findByUniqueField("activation", code);
+    }
 }

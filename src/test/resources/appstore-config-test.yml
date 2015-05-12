@@ -5,6 +5,23 @@ publicUriBase: https://127.0.0.1
 bcryptRounds: 2
 springContextPath: classpath:/spring.xml
 
+emailTemplateRoot: {{EMAIL_TEMPLATE_ROOT}}
+
+emailSenderNames:
+  welcome:
+    fromName:  admin
+    fromEmail: admin@example.com
+  reset_password:
+    fromName: admin
+    fromEmail: admin@example.com
+
+smtp:
+  host: smtp.sendgrid.net
+  port: 587
+  user: {{SENDGRID_API_USER}}
+  password: {{SENDGRID_API_KEY}}
+  tlsEnabled: true
+
 http:
   port: 0
   baseUri: /

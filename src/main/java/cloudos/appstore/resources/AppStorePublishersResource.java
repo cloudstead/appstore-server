@@ -24,8 +24,6 @@ import java.util.List;
 @Service @Slf4j
 public class AppStorePublishersResource {
 
-    @Autowired private ApiTokenDAO apiTokenDAO;
-    @Autowired private AppStoreAccountDAO appStoreAccountDAO;
     @Autowired private AppStorePublisherDAO publisherDAO;
     @Autowired private AppStorePublisherMemberDAO publisherMemberDAO;
 
@@ -43,6 +41,25 @@ public class AppStorePublishersResource {
         if (publisher == null) return ResourceUtil.notFound(uuid);
 
         if (!isMember(account.getUuid(), publisher.getUuid())) return ResourceUtil.notFound(uuid);
+
+        return Response.ok(publisher).build();
+    }
+
+    @POST
+    @Path("/{uuid}")
+    public Response updatePublisher (@Context HttpContext context,
+                                     @PathParam("uuid") String uuid,
+                                     AppStorePublisher updated) {
+
+        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+
+        final AppStorePublisher publisher = publisherDAO.findByUuid(uuid);
+        if (publisher == null) return ResourceUtil.notFound(uuid);
+
+        if (!account.isAdmin()) {
+            if (!isMember(account.getUuid(), publisher.getUuid())) return ResourceUtil.notFound(uuid);
+            updated.setOwner(publisher.getOwner());
+        }
 
         return Response.ok(publisher).build();
     }
@@ -88,7 +105,10 @@ public class AppStorePublishersResource {
             publisherMemberDAO.delete(m.getUuid());
         }
 
-        publisherDAO.delete(uuid);
+        // cannot delete "self" publisher
+        if (!publisher.getUuid().equals(account.getUuid())) {
+            publisherDAO.delete(uuid);
+        }
 
         return Response.ok().build();
     }
