@@ -9,8 +9,6 @@ public class AppStoreAccountMain extends AppStoreMainBase<AppStoreAccountOptions
 
     public static void main (String[] args) { main(AppStoreAccountMain.class, args); }
 
-    @Override protected AppStoreAccountOptions initOptions() { return new AppStoreAccountOptions(); }
-
     @Override protected void run() throws Exception {
         final ApiClientBase api = getApiClient();
         final AppStoreAccountOptions options = getOptions();

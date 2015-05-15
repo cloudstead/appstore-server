@@ -8,8 +8,6 @@ public class AppStorePublisherMain extends AppStoreMainBase<AppStorePublisherOpt
 
     public static void main (String[] args) { main(AppStorePublisherMain.class, args); }
 
-    @Override protected AppStorePublisherOptions initOptions() { return new AppStorePublisherOptions(); }
-
     @Override protected void run() throws Exception {
         final ApiClientBase api = getApiClient();
         final AppStorePublisherOptions options = getOptions();

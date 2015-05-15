@@ -10,8 +10,6 @@ public class AppStoreMemberMain extends AppStoreMainBase<AppStoreMemberOptions> 
 
     public static void main (String[] args) { main(AppStoreMemberMain.class, args); }
 
-    @Override protected AppStoreMemberOptions initOptions() { return new AppStoreMemberOptions(); }
-
     @Override protected void run() throws Exception {
 
         final AppStoreApiClient api = getApiClient();
