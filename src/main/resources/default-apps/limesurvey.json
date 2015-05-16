@@ -1,0 +1,17 @@
+{
+  "version" : "1.0.0",
+  "status" : "PUBLISHED",
+  "interactive" : true,
+  "data" : {
+    "blurb" : "Web surveys, made easy.",
+    "description" : "Create surveys, send them out and view reports on the responses",
+    "taskbarIconUrl" : "http://cloudstead.io/downloads/icons/limesurvey-small.png",
+    "taskbarIconUrlSha" : "e861f1ddf8521de5ef3578fa1131f225707790b3ab467ee2af2b45f87ba714c7",
+    "smallIconUrl" : "http://cloudstead.io/downloads/icons/limesurvey-small.png",
+    "smallIconUrlSha" : "e861f1ddf8521de5ef3578fa1131f225707790b3ab467ee2af2b45f87ba714c7",
+    "largeIconUrl" : "http://cloudstead.io/downloads/icons/limesurvey-large.png",
+    "largeIconUrlSha" : "e861f1ddf8521de5ef3578fa1131f225707790b3ab467ee2af2b45f87ba714c7"
+  },
+  "bundleUrl" : "http://cloudstead.io/downloads/limesurvey-bundle.tar.gz",
+  "bundleUrlSha" : "1bd10bd7dcd93420f293c2a9ab49993cfd37da0becab1dcc21fa839c04918171"
+}

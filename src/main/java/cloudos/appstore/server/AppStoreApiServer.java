@@ -11,11 +11,13 @@ public class AppStoreApiServer extends RestServerBase<AppStoreApiConfiguration> 
 
     private static final String[] API_CONFIG_YML = {"appstore-config.yml"};
 
+    public static final AppStoreInitializer INITIALIZER = new AppStoreInitializer();
+
     @Override protected String getListenAddress() { return LOCALHOST; }
 
     public static void main(String[] args) throws Exception {
         final List<ConfigurationSource> configSources = getStreamConfigurationSources(AppStoreApiServer.class, API_CONFIG_YML);
-        main(AppStoreApiServer.class, configSources);
+        main(AppStoreApiServer.class, INITIALIZER, configSources);
     }
 
 }

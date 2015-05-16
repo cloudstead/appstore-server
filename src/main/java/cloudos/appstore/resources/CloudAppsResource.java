@@ -1,10 +1,10 @@
 package cloudos.appstore.resources;
 
-import com.sun.jersey.api.core.HttpContext;
-import lombok.extern.slf4j.Slf4j;
 import cloudos.appstore.ApiConstants;
 import cloudos.appstore.dao.*;
 import cloudos.appstore.model.*;
+import com.sun.jersey.api.core.HttpContext;
+import lombok.extern.slf4j.Slf4j;
 import org.cobbzilla.wizard.resources.ResourceUtil;
 import org.cobbzilla.wizard.validation.ConstraintViolationBean;
 import org.cobbzilla.wizard.validation.SimpleViolationException;
@@ -17,7 +17,9 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static cloudos.appstore.ValidationConstants.ERR_APP_PUBLISHER_INVALID;
 import static cloudos.appstore.ValidationConstants.ERR_APP_VERSION_ALREADY_EXISTS;
@@ -30,6 +32,7 @@ public class CloudAppsResource {
 
     @Autowired private CloudAppDAO appDAO;
     @Autowired private CloudAppVersionDAO versionDAO;
+    @Autowired private AppStorePublisherDAO publisherDAO;
     @Autowired private AppStorePublisherMemberDAO memberDAO;
     @Autowired private AppFootprintDAO footprintDAO;
     @Autowired private AppPriceDAO priceDAO;
@@ -64,6 +67,21 @@ public class CloudAppsResource {
     }
 
     @GET
+    public Response findApps (@Context HttpContext context) {
+
+        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+
+        final List<AppStorePublisherMember> memberships = memberDAO.findActiveByAccount(account.getUuid());
+        final Map<AppStorePublisher, List<CloudApp>> apps = new HashMap<>();
+
+        for (AppStorePublisherMember m : memberships) {
+            apps.put(publisherDAO.findByUuid(m.getPublisher()), appDAO.findByPublisher(m.getPublisher()));
+        }
+
+        return Response.ok(apps).build();
+    }
+
+    @GET
     @Path("/{uuid}")
     public Response findApp (@Context HttpContext context,
                              @PathParam("uuid") String uuid) {
@@ -82,7 +100,7 @@ public class CloudAppsResource {
     @Path("/{uuid}")
     public Response updateApp(@Context HttpContext context,
                               @PathParam("uuid") String uuid,
-                              CloudApp proposed) {
+                              @Valid CloudApp proposed) {
 
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 

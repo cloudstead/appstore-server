@@ -1,0 +1,17 @@
+{
+  "version" : "1.0.0",
+  "status" : "PUBLISHED",
+  "interactive" : true,
+  "data" : {
+    "blurb" : "An instant messenger that's great for groups",
+    "description" : "An instant messenger that's great for groups",
+    "taskbarIconUrl" : "http://cloudstead.io/downloads/icons/kandan-small.png",
+    "taskbarIconUrlSha" : "b7bafbfe8544327489da3774c1f40a6a96a2f8522e9956559f3db4580408f8b7",
+    "smallIconUrl" : "http://cloudstead.io/downloads/icons/kandan-small.png",
+    "smallIconUrlSha" : "b7bafbfe8544327489da3774c1f40a6a96a2f8522e9956559f3db4580408f8b7",
+    "largeIconUrl" : "http://cloudstead.io/downloads/icons/kandan-large.png",
+    "largeIconUrlSha" : "b7bafbfe8544327489da3774c1f40a6a96a2f8522e9956559f3db4580408f8b7"
+  },
+  "bundleUrl" : "http://cloudstead.io/downloads/kandan-bundle.tar.gz",
+  "bundleUrlSha" : "b2e4e804f348551918482b133c1dc288d3ca6358b8a094ef9e71018ea81785f8"
+}

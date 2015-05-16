@@ -1,0 +1,17 @@
+{
+  "version" : "1.0.0",
+  "status" : "PUBLISHED",
+  "interactive" : true,
+  "data" : {
+    "blurb" : "Simple project management with Kanban boards",
+    "description" : "Simple project management with Kanban boards",
+    "taskbarIconUrl" : "http://cloudstead.io/downloads/icons/kanban-small.png",
+    "taskbarIconUrlSha" : "8243aca0e8223d1f4413c41c562e22a362eb473808b6eeb0762fe369a30c58c6",
+    "smallIconUrl" : "http://cloudstead.io/downloads/icons/kanban-small.png",
+    "smallIconUrlSha" : "8243aca0e8223d1f4413c41c562e22a362eb473808b6eeb0762fe369a30c58c6",
+    "largeIconUrl" : "http://cloudstead.io/downloads/icons/kanban-large.png",
+    "largeIconUrlSha" : "8243aca0e8223d1f4413c41c562e22a362eb473808b6eeb0762fe369a30c58c6"
+  },
+  "bundleUrl" : "http://cloudstead.io/downloads/kanban-bundle.tar.gz",
+  "bundleUrlSha" : "8b2fd7d8857509c0bb114c7692114937d8d914a756259f84a33cef6a00262813"
+}

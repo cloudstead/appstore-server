@@ -1,0 +1,17 @@
+{
+  "version" : "1.0.0",
+  "status" : "PUBLISHED",
+  "interactive" : true,
+  "data" : {
+    "blurb" : "Email list manager. Great for marketing and communications.",
+    "description" : "Email list manager. Great for marketing and communications.",
+    "taskbarIconUrl" : "http://cloudstead.io/downloads/icons/phplist-small.png",
+    "taskbarIconUrlSha" : "e5a3a7f53bbd56fd00ea3a1d9f5eb67f4d1b5ebb643479c19f2cbf8cd1f7f498",
+    "smallIconUrl" : "http://cloudstead.io/downloads/icons/phplist-small.png",
+    "smallIconUrlSha" : "e5a3a7f53bbd56fd00ea3a1d9f5eb67f4d1b5ebb643479c19f2cbf8cd1f7f498",
+    "largeIconUrl" : "http://cloudstead.io/downloads/icons/phplist-large.png",
+    "largeIconUrlSha" : "e5a3a7f53bbd56fd00ea3a1d9f5eb67f4d1b5ebb643479c19f2cbf8cd1f7f498"
+  },
+  "bundleUrl" : "http://cloudstead.io/downloads/phplist-bundle.tar.gz",
+  "bundleUrlSha" : "b88a62105465d9f8a46fd8d378dc94b98d28cbe65116f7fadbd6be59eae9c1be"
+}

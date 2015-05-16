@@ -1,0 +1,12 @@
+{
+  "name": "cloudstead",
+  "admin": true,
+  "email": "_@_",
+  "emailVerified": false,
+  "firstName": "cloudstead",
+  "lastName": "cloudstead",
+  "mobilePhoneCountryCode": 1,
+  "mobilePhone": "________",
+  "suspended": true,
+  "twoFactor": false
+}

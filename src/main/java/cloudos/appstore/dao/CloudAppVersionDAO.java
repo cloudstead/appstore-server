@@ -14,4 +14,10 @@ public class CloudAppVersionDAO extends AbstractCRUDDAO<CloudAppVersion> {
         return list(criteria().add(Restrictions.eq("app", uuid)));
     }
 
+    public CloudAppVersion findByAppAndVersion(String uuid, String version) {
+        return uniqueResult(criteria().add(Restrictions.and(
+                Restrictions.eq("app", uuid),
+                Restrictions.eq("version", version))));
+    }
+
 }

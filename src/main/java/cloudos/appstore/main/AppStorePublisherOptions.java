@@ -33,6 +33,10 @@ public class AppStorePublisherOptions extends AppStoreMainOptions {
 
     public String publisherUri () { return PUBLISHERS_ENDPOINT + "/" + (hasUuid() ? getUuid() : die("no uuid")); }
 
-    public AppStorePublisher getPublisher() { return new AppStorePublisher().setName(name); }
+    public AppStorePublisher getPublisher() {
+        final AppStorePublisher publisher = new AppStorePublisher();
+        publisher.setName(name);
+        return publisher;
+    }
 
 }

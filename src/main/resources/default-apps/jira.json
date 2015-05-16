@@ -1,0 +1,17 @@
+{
+  "version" : "1.0.0",
+  "status" : "PUBLISHED",
+  "interactive" : true,
+  "data" : {
+    "blurb" : "A popular issue tracker made by Atlassian",
+    "description" : "A popular issue tracker made by Atlassian",
+    "taskbarIconUrl" : "http://cloudstead.io/downloads/icons/jira-small.png",
+    "taskbarIconUrlSha" : "ce50cb2d891a4801b45d68ff2cb84ff77981d8f1e5f7a2d54b124f071190c552",
+    "smallIconUrl" : "http://cloudstead.io/downloads/icons/jira-small.png",
+    "smallIconUrlSha" : "ce50cb2d891a4801b45d68ff2cb84ff77981d8f1e5f7a2d54b124f071190c552",
+    "largeIconUrl" : "http://cloudstead.io/downloads/icons/jira-large.png",
+    "largeIconUrlSha" : "ce50cb2d891a4801b45d68ff2cb84ff77981d8f1e5f7a2d54b124f071190c552"
+  },
+  "bundleUrl" : "http://cloudstead.io/downloads/jira-bundle.tar.gz",
+  "bundleUrlSha" : "3cb7a5272bca9319314104075c43fd732501561c8b2b13a743a5500eb70c1605"
+}

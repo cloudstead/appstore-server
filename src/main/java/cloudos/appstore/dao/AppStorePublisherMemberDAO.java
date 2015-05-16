@@ -29,4 +29,12 @@ public class AppStorePublisherMemberDAO extends AbstractCRUDDAO<AppStorePublishe
     public AppStorePublisherMember findByActivationCode(String code) {
         return findByUniqueField("activation", code);
     }
+
+    public List<AppStorePublisherMember> findActiveByAccount(String account) {
+        return list(criteria().add(Restrictions.and(
+                Restrictions.eq("account", account),
+                Restrictions.eq("active", true)
+        )));
+    }
+
 }

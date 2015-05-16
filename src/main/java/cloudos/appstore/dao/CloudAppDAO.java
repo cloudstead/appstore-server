@@ -1,14 +1,14 @@
 package cloudos.appstore.dao;
 
 import cloudos.appstore.model.CloudApp;
-import org.cobbzilla.wizard.dao.AbstractCRUDDAO;
+import org.cobbzilla.wizard.dao.UniquelyNamedEntityDAO;
 import org.hibernate.criterion.Restrictions;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public class CloudAppDAO extends AbstractCRUDDAO<CloudApp> {
+public class CloudAppDAO extends UniquelyNamedEntityDAO<CloudApp> {
 
     public List<CloudApp> findByPublisher(String publisher) {
         return list(criteria().add(Restrictions.eq("publisher", publisher)));

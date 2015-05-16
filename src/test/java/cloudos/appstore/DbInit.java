@@ -9,6 +9,7 @@ import cloudos.appstore.model.support.AppStoreAccountRegistration;
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
 import org.cobbzilla.util.collection.MapBuilder;
+import org.cobbzilla.util.io.FileUtil;
 import org.cobbzilla.util.security.ShaUtil;
 import org.cobbzilla.util.system.CommandShell;
 import org.cobbzilla.wizard.dao.SearchResults;
@@ -18,11 +19,13 @@ import org.hibernate.jdbc.Work;
 import org.junit.Test;
 import org.springframework.orm.hibernate3.HibernateTemplate;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
 
+import static org.cobbzilla.util.json.JsonUtil.toJson;
 import static org.junit.Assert.assertEquals;
 
 @Slf4j
@@ -122,6 +125,7 @@ public class DbInit extends AppStoreITBase {
 
         for (CloudApp app : getApps()) {
             app = appStoreClient.defineApp(app);
+            FileUtil.toFile(new File("/tmp/cas_app_"+app.getName()+".json"), toJson(app));
             final String bundleUrl = "http://cloudstead.io/downloads/" + app.getName() + "-bundle.tar.gz";
             CloudAppVersion version = (CloudAppVersion) new CloudAppVersion()
                     .setVersion("1.0.0")
@@ -135,6 +139,7 @@ public class DbInit extends AppStoreITBase {
             version = appStoreClient.defineAppVersion(version);
             version.setAppStatus(CloudAppStatus.PUBLISHED);
             appStoreClient.updateAppVersion(version);
+            FileUtil.toFile(new File("/tmp/cas_app_" + app.getName() + "_" + version.getVersion() + ".json"), toJson(version));
         }
 
         // query app store -- ensure all apps are found
@@ -163,7 +168,7 @@ public class DbInit extends AppStoreITBase {
     private List<CloudApp> getApps() {
         final List<CloudApp> apps = new ArrayList<>();
         for (String name : APP_NAMES) {
-            CloudApp app = new CloudApp()
+            CloudApp app = (CloudApp) new CloudApp()
                     .setAuthor(admin.getUuid())
                     .setPublisher(admin.getUuid())
                     .setName(name);

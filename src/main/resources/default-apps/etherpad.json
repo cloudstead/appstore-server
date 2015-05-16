@@ -1,0 +1,17 @@
+{
+  "version" : "1.0.0",
+  "status" : "PUBLISHED",
+  "interactive" : true,
+  "data" : {
+    "blurb" : "Collaborative document editing.",
+    "description" : "Create documents and let multiple people work on them together",
+    "taskbarIconUrl" : "http://cloudstead.io/downloads/icons/etherpad-small.png",
+    "taskbarIconUrlSha" : "6de8876ad4e74c057ebe20f15ccf36b67350b62f8d9421b0a054277b9ea4f1c8",
+    "smallIconUrl" : "http://cloudstead.io/downloads/icons/etherpad-small.png",
+    "smallIconUrlSha" : "6de8876ad4e74c057ebe20f15ccf36b67350b62f8d9421b0a054277b9ea4f1c8",
+    "largeIconUrl" : "http://cloudstead.io/downloads/icons/etherpad-large.png",
+    "largeIconUrlSha" : "6de8876ad4e74c057ebe20f15ccf36b67350b62f8d9421b0a054277b9ea4f1c8"
+  },
+  "bundleUrl" : "http://cloudstead.io/downloads/etherpad-bundle.tar.gz",
+  "bundleUrlSha" : "e170efdfea354b4bfa1adc7f509fb21dfbe07a3ae02ab5c812c7243fb8ab1133"
+}

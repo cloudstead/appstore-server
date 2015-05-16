@@ -16,6 +16,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.ArrayList;
 import java.util.List;
 
 @Consumes(MediaType.APPLICATION_JSON)
@@ -25,10 +26,24 @@ import java.util.List;
 public class AppStorePublishersResource {
 
     @Autowired private AppStorePublisherDAO publisherDAO;
-    @Autowired private AppStorePublisherMemberDAO publisherMemberDAO;
+    @Autowired private AppStorePublisherMemberDAO memberDAO;
 
     @Autowired private CloudAppDAO cloudAppDAO;
     @Autowired private CloudAppsResource appsResource;
+
+    @GET
+    public Response findPublishers (@Context HttpContext context) {
+
+        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+
+        final List<AppStorePublisher> publishers = new ArrayList<>();
+        final List<AppStorePublisherMember> members = memberDAO.findByAccount(account.getUuid());
+        for (AppStorePublisherMember m : members) {
+            publishers.add(publisherDAO.findByUuid(m.getPublisher()));
+        }
+
+        return Response.ok(publishers).build();
+    }
 
     @GET
     @Path("/{uuid}")
@@ -57,7 +72,7 @@ public class AppStorePublishersResource {
         if (publisher == null) return ResourceUtil.notFound(uuid);
 
         if (!account.isAdmin()) {
-            if (!isMember(account.getUuid(), publisher.getUuid())) return ResourceUtil.notFound(uuid);
+            if (!isActiveMember(account.getUuid(), publisher.getUuid())) return ResourceUtil.notFound(uuid);
             updated.setOwner(publisher.getOwner());
         }
 
@@ -65,7 +80,7 @@ public class AppStorePublishersResource {
     }
 
     private AppStorePublisherMember getMember(String account, String publisher) {
-        return getMember(account, publisher, publisherMemberDAO);
+        return getMember(account, publisher, memberDAO);
     }
 
     public static AppStorePublisherMember getMember(String account, String publisher, AppStorePublisherMemberDAO memberDAO) {
@@ -76,8 +91,18 @@ public class AppStorePublishersResource {
         return getMember(account, publisher) != null;
     }
 
+    private boolean isActiveMember (String account, String publisher) {
+        final AppStorePublisherMember member = getMember(account, publisher);
+        return member != null && member.isActive();
+    }
+
     public static boolean isMember(String account, String publisher, AppStorePublisherMemberDAO memberDAO) {
         return getMember(account, publisher, memberDAO) != null;
+    }
+
+    public static boolean isActiveMember(String account, String publisher, AppStorePublisherMemberDAO memberDAO) {
+        final AppStorePublisherMember member = getMember(account, publisher, memberDAO);
+        return member != null && member.isActive();
     }
 
     @DELETE
@@ -100,9 +125,9 @@ public class AppStorePublishersResource {
         }
 
         // find any memberships
-        final List<AppStorePublisherMember> members = publisherMemberDAO.findByPublisher(publisher.getUuid());
+        final List<AppStorePublisherMember> members = memberDAO.findByPublisher(publisher.getUuid());
         for (AppStorePublisherMember m : members) {
-            publisherMemberDAO.delete(m.getUuid());
+            memberDAO.delete(m.getUuid());
         }
 
         // cannot delete "self" publisher

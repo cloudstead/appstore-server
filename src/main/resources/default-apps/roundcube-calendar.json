@@ -1,0 +1,17 @@
+{
+  "version" : "1.0.0",
+  "status" : "PUBLISHED",
+  "interactive" : true,
+  "data" : {
+    "blurb" : "Web calendar for your cloudstead",
+    "description" : "Web calendar for your cloudstead",
+    "taskbarIconUrl" : "http://cloudstead.io/downloads/icons/roundcube-calendar-small.png",
+    "taskbarIconUrlSha" : "0aaba50b427087d2ea5b0407fa32ad4e9af44becf17522666d6e05b6492d0f70",
+    "smallIconUrl" : "http://cloudstead.io/downloads/icons/roundcube-calendar-small.png",
+    "smallIconUrlSha" : "0aaba50b427087d2ea5b0407fa32ad4e9af44becf17522666d6e05b6492d0f70",
+    "largeIconUrl" : "http://cloudstead.io/downloads/icons/roundcube-calendar-large.png",
+    "largeIconUrlSha" : "0aaba50b427087d2ea5b0407fa32ad4e9af44becf17522666d6e05b6492d0f70"
+  },
+  "bundleUrl" : "http://cloudstead.io/downloads/roundcube-calendar-bundle.tar.gz",
+  "bundleUrlSha" : "a9a75a318665c6bc03501bee8356a44dfa94590e6948e224d2c81e5a40edbb29"
+}
