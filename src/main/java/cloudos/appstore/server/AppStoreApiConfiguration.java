@@ -1,6 +1,7 @@
 package cloudos.appstore.server;
 
 import cloudos.appstore.ApiConstants;
+import cloudos.appstore.model.app.AppLayout;
 import lombok.Getter;
 import lombok.Setter;
 import org.cobbzilla.mail.SimpleEmailMessage;
@@ -35,5 +36,12 @@ public class AppStoreApiConfiguration extends RestServerConfiguration
                 .append(getPublicUriBase()).append(getHttp().getBaseUri())
                 .append(ApiConstants.MEMBERS_ENDPOINT)
                 .append("/activate/").append(code).toString();
+    }
+
+    public String getPublicBundleUrl(String appName, String version) {
+        return getPublicUriBase()
+                + appStore.getAssetUrlBase()
+                + "/apps/" + appName + "/" + version + "/"
+                + AppLayout.BUNDLE_TARBALL;
     }
 }

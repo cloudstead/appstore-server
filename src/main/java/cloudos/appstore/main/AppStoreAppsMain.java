@@ -2,13 +2,12 @@ package cloudos.appstore.main;
 
 import cloudos.appstore.client.AppStoreApiClient;
 import cloudos.appstore.model.AppStoreAccount;
-import cloudos.appstore.model.AppStorePublisher;
 import org.cobbzilla.wizard.api.CrudOperation;
 import org.cobbzilla.wizard.util.RestResponse;
 
-import static cloudos.appstore.ApiConstants.*;
-import static cloudos.appstore.main.AppStoreAppsOptions.LONGOPT_NAME;
-import static cloudos.appstore.main.AppStoreAppsOptions.OPT_NAME;
+import static cloudos.appstore.ApiConstants.ACCOUNTS_ENDPOINT;
+import static cloudos.appstore.ApiConstants.APPS_ENDPOINT;
+import static cloudos.appstore.main.AppStoreAppsOptions.*;
 import static org.cobbzilla.util.json.JsonUtil.fromJson;
 import static org.cobbzilla.util.json.JsonUtil.toJson;
 
@@ -25,28 +24,22 @@ public class AppStoreAppsMain extends AppStoreMainBase<AppStoreAppsOptions> {
 
         final AppStoreAccount account = fromJson(api.get(ACCOUNTS_ENDPOINT).json, AppStoreAccount.class);
 
-        final AppStorePublisher publisher = options.hasPublisher()
-                ? fromJson(api.get(PUBLISHERS_ENDPOINT+"/"+options.getPublisher()).json, AppStorePublisher.class)
-                : null;
-
-        if (options.hasUuid()) uri += "/" + options.getUuid();
-
         final CrudOperation operation = options.getOperation();
         switch (operation) {
             case create:
-                if (!options.hasName()) die(OPT_NAME+"/"+LONGOPT_NAME+" is required for "+operation);
-                response = api.doPut(uri, toJson(options.getCloudApp(account)));
+                if (!options.hasBundleUrl()) die(OPT_BUNDLE_URL+"/"+LONGOPT_BUNDLE_URL+" is required for "+operation);
+                response = api.doPost(uri, toJson(options.getCloudAppRequest(account)));
                 break;
 
             case read:
+                if (options.hasName()) uri += "/" + options.getName();
                 response = api.doGet(uri);
                 break;
 
-            case update:
-                response = api.doPost(uri, toJson(options.getCloudApp(account)));
-                break;
-
             case delete:
+                if (!options.hasName()) die(OPT_NAME+"/"+LONGOPT_NAME+" is required for "+operation);
+                uri += "/" + options.getName();
+                if (options.hasVersion()) uri += "/versions/" + options.getVersion();
                 response = api.doDelete(uri);
                 break;
 

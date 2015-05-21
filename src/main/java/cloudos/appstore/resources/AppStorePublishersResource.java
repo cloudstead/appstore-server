@@ -52,7 +52,8 @@ public class AppStorePublishersResource {
 
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
-        final AppStorePublisher publisher = publisherDAO.findByUuid(uuid);
+        AppStorePublisher publisher = publisherDAO.findByUuid(uuid);
+        if (publisher == null) publisher = publisherDAO.findByName(uuid);
         if (publisher == null) return ResourceUtil.notFound(uuid);
 
         if (!isMember(account.getUuid(), publisher.getUuid())) return ResourceUtil.notFound(uuid);
@@ -120,7 +121,7 @@ public class AppStorePublishersResource {
         Response deleteResponse;
         final List<CloudApp> apps = cloudAppDAO.findByPublisher(uuid);
         for (CloudApp app : apps) {
-            deleteResponse = appsResource.deleteApp(context, app.getUuid());
+            deleteResponse = appsResource.deleteApp(context, app.getName());
             if (deleteResponse.getStatus() != 200) return deleteResponse;
         }
 

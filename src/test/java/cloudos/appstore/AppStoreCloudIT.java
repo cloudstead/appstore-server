@@ -3,7 +3,6 @@ package cloudos.appstore;
 import cloudos.appstore.mock.MockCloudOsHandler;
 import cloudos.appstore.model.AppStoreCloudAccount;
 import cloudos.appstore.model.support.CloudAccountSessionRequest;
-import cloudos.appstore.test.AppStoreSeedData;
 import lombok.extern.slf4j.Slf4j;
 import org.cobbzilla.util.system.PortPicker;
 import org.cobbzilla.wizard.util.RestResponse;
@@ -20,19 +19,9 @@ import static org.junit.Assert.assertEquals;
 @Slf4j
 public class AppStoreCloudIT extends AppStoreITBase {
 
-    public static final int NUM_ACCOUNTS = 2;
-    public static final int NUM_APPS = 8;
-    public static final int NUM_VERSIONS = 2;
-
-    protected AppStoreSeedData seedData;
-
     private Server mockCloudOs;
     private int mockCloudOsPort;
     private MockCloudOsHandler cloudOsHandler;
-
-    @Before public void populateAppStore () throws Exception {
-        seedData = new AppStoreSeedData(appStoreClient, adminToken, NUM_ACCOUNTS, NUM_APPS, NUM_VERSIONS);
-    }
 
     @Before public void setupMockCloudOs () throws Exception {
         mockCloudOsPort = PortPicker.pick();

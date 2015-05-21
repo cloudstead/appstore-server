@@ -47,11 +47,15 @@ public class AppStoreAuthResource {
     public Response register (@Valid AppStoreAccountRegistration registration) {
 
         final String email = registration.getEmail();
+        final String name = registration.getName();
 
         final List<ConstraintViolationBean> violations = new ArrayList<>();
 
         final AppStoreAccount foundAccount = accountDAO.findByEmail(email);
         if (foundAccount != null) violations.add(new ConstraintViolationBean(ValidationConstants.ERR_EMAIL_NOT_UNIQUE));
+
+        if (accountDAO.findByName(name) != null) violations.add(new ConstraintViolationBean(ValidationConstants.ERR_NAME_NOT_UNIQUE));
+        if (publisherDAO.findByName(name) != null) violations.add(new ConstraintViolationBean(ValidationConstants.ERR_NAME_NOT_UNIQUE));
 
         final AppStoreAccount account = new AppStoreAccount().populate(registration);
         account.setHashedPassword(new HashedPassword(registration.getPassword()));
@@ -64,7 +68,7 @@ public class AppStoreAuthResource {
         final AppStorePublisher publisher = new AppStorePublisher();
         publisher.setUuid(uuid);
         publisher.setOwner(uuid);
-        publisher.setName(registration.getName());
+        publisher.setName(name);
         final AppStorePublisher createdPublisher = publisherDAO.create(publisher);
 
         final AppStorePublisherMember member = new AppStorePublisherMember();

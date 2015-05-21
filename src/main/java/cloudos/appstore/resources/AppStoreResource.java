@@ -42,27 +42,27 @@ public class AppStoreResource {
 
     private AppListing getAppListing(PublishedApp app) {
 
-        final String appUuid = app.getApp();
+        final String appName = app.getAppName();
 
         // todo: use promises to parallelize these lookups
-        final CloudApp cloudApp = cloudAppDAO.findByUuid(appUuid);
+        final CloudApp cloudApp = cloudAppDAO.findByName(appName);
         final AppStorePublisher publisher = publisherDAO.findByUuid(cloudApp.getPublisher());
-        final List<AppPrice> prices = priceDAO.findByApp(appUuid);
-        final AppFootprint footprint = footprintDAO.findByApp(appUuid);
+        final List<AppPrice> prices = priceDAO.findByApp(appName);
+        final AppFootprint footprint = footprintDAO.findByApp(appName);
 
         return new AppListing()
-                .setAppVersion(app)
-                .setName(cloudApp.getName())
+                .setApp(app)
                 .setPublisher(publisher)
                 .setFootprint(footprint)
                 .setPrices(prices);
     }
 
     @GET
-    @Path("/{uuid}")
-    public Response findApp (@PathParam("uuid") String uuid) {
+    @Path("/{name}/{version}")
+    public Response findApp (@PathParam("name") String name,
+                             @PathParam("version") String version) {
 
-        final PublishedApp app = publishedAppDAO.findByUuid(uuid);
+        final PublishedApp app = publishedAppDAO.findByNameAndVersion(name, version);
         final AppListing appListing = getAppListing(app);
 
         return Response.ok(appListing).build();

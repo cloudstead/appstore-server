@@ -3,8 +3,13 @@ package cloudos.appstore;
 import cloudos.appstore.model.*;
 import cloudos.appstore.model.support.ApiToken;
 import cloudos.appstore.model.support.AppStoreAccountRegistration;
+import cloudos.appstore.model.support.CloudAppVersion;
 import cloudos.appstore.test.AppStoreTestUtil;
+import cloudos.appstore.test.AssetWebServer;
+import cloudos.appstore.test.TestApp;
 import org.cobbzilla.wizard.api.NotFoundException;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -13,8 +18,21 @@ public class AppStoreCrudIT extends AppStoreITBase {
 
     public static final String DOC_TARGET = "account registration and app publishing";
 
-    @Test
-    public void testAppCrud () throws Exception {
+    public static final String TEST_MANIFEST = "apps/simple-app-manifest.json";
+    public static final String TEST_ICON = "apps/some-icon.png";
+
+    private static TestApp testApp;
+
+    protected static AssetWebServer webServer = new AssetWebServer();
+
+    @BeforeClass public static void startTestWebserver() throws Exception {
+        webServer.start();
+        testApp = webServer.buildAppTarball(TEST_MANIFEST, null, TEST_ICON);
+    }
+
+    @AfterClass public static void stopTestWebserver() throws Exception { webServer.stop(); }
+
+    @Test public void testAppCrud () throws Exception {
         apiDocs.startRecording(DOC_TARGET, "register an account and publish an app");
 
         final AppStoreAccountRegistration registration = AppStoreTestUtil.buildPublisherRegistration();
@@ -36,30 +54,28 @@ public class AppStoreCrudIT extends AppStoreITBase {
         assertEquals(registration.getName(), publisher.getName());
 
         apiDocs.addNote("define a cloud app");
-        final CloudApp app = AppStoreTestUtil.newCloudApp(appStoreClient, publisher.getUuid());
-        assertEquals(app.getName(), app.getName());
+        final CloudAppVersion appVersion = AppStoreTestUtil.newCloudApp(appStoreClient, publisher.getName(), testApp.getBundleUrl(), testApp.getBundleUrlSha());
+        assertEquals(testApp.getNameAndVersion(), appVersion.toString());
 
         apiDocs.addNote("lookup the app we just defined");
-        final CloudApp foundApp = appStoreClient.findApp(app.getUuid());
+        final String appName = testApp.getManifest().getName();
+        final CloudApp foundApp = appStoreClient.findApp(appName);
         assertNotNull(foundApp);
-        assertEquals(app.getUuid(), foundApp.getUuid());
 
-        apiDocs.addNote("define a version of the app");
-        final CloudAppVersion version = AppStoreTestUtil.newCloudAppVersion(appStoreClient, foundApp);
+        CloudAppStatus appStatus;
 
         apiDocs.addNote("request to publish the app");
-        version.setAppStatus(CloudAppStatus.PENDING);
-        final CloudAppVersion updatedVersion = appStoreClient.updateAppVersion(version);
-        assertEquals(CloudAppStatus.PENDING, updatedVersion.getAppStatus());
+        final String version = testApp.getManifest().getVersion();
+        appStatus = appStoreClient.updateAppStatus(appName, version, CloudAppStatus.pending);
+        assertEquals(CloudAppStatus.pending, appStatus);
 
-        apiDocs.addNote("admin approves the app");
+        apiDocs.addNote("admin approves the app (note the session token -- it's different because this call is made by an admin user)");
         appStoreClient.pushToken(adminToken);
-        updatedVersion.setAppStatus(CloudAppStatus.PUBLISHED);
-        final CloudAppVersion adminEdited = appStoreClient.updateAppVersion(updatedVersion);
-        assertEquals(CloudAppStatus.PUBLISHED, adminEdited.getAppStatus());
+        appStatus = appStoreClient.updateAppStatus(appName, version, CloudAppStatus.published);
+        assertEquals(CloudAppStatus.published, appStatus);
 
         apiDocs.addNote("verify that the admin is listed as the author");
-        assertEquals(admin.getUuid(), appStoreClient.findAppVersion(adminEdited.getUuid()).getAuthor());
+        assertEquals(admin.getUuid(), getVersionMetadata(appName, version).getApprovedBy());
         appStoreClient.popToken();
 
         apiDocs.addNote("delete the account");
@@ -69,7 +85,7 @@ public class AppStoreCrudIT extends AppStoreITBase {
 
         try {
             apiDocs.addNote("try to lookup the deleted account, should fail");
-            AppStoreAccount wtf = appStoreClient.findAccount(accountUuid);
+            appStoreClient.findAccount(accountUuid);
             fail("expected 404 response");
         } catch (NotFoundException expected) { /* noop */ }
 
@@ -81,17 +97,21 @@ public class AppStoreCrudIT extends AppStoreITBase {
 
         try {
             apiDocs.addNote("try to lookup the app, should fail");
-            appStoreClient.findApp(app.getUuid());
+            appStoreClient.findApp(appName);
             fail("expected 404 response");
         } catch (NotFoundException expected) { /* noop */ }
 
         try {
-            apiDocs.addNote("try to lookup the version, should fail");
-            appStoreClient.findAppVersion(adminEdited.getUuid());
+            apiDocs.addNote("try to lookup the version metadata, should fail");
+            getVersionMetadata(appName, version);
             fail("expected 404 response");
         } catch (NotFoundException expected) { /* noop */ }
 
         appStoreClient.popToken();
+    }
+
+    public AppStoreAppMetadata getVersionMetadata(String appName, String version) throws Exception {
+        return appStoreClient.findVersionMetadata(appName, version);
     }
 
 

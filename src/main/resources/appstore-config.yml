@@ -49,3 +49,4 @@ database:
 
 appStore:
   allowedAssetSchemes: [ http, https ]
+  appRepository: {{APPSTORE_APP_REPOSITORY}}
