@@ -43,7 +43,11 @@ public class AppStoreITBase extends ApiDocsResourceIT<AppStoreApiConfiguration, 
     protected String adminToken;
     protected AppStoreAccount admin;
 
+    public boolean doCreateAdmin () { return true; }
+
     @Before public void createAdminUser () throws Exception {
+
+        if (!doCreateAdmin()) return;
 
         final AppStoreAccountRegistration registration = AppStoreTestUtil.buildPublisherRegistration();
 

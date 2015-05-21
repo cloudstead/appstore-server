@@ -12,6 +12,8 @@ public class DbInit extends AppStoreITBase {
 
     private final AppStoreInitializer initializer = new AppStoreInitializer();
 
+    public boolean doCreateAdmin () { return false; }
+
     @Override public void onStart(RestServer<AppStoreApiConfiguration> server) {
         initializer.onStart(server);
         super.onStart(server);
