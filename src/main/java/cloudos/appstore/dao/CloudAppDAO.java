@@ -18,13 +18,4 @@ public class CloudAppDAO extends UniquelyNamedEntityDAO<CloudApp> {
         return uniqueResult(criteria().add(Restrictions.eq("name", name)));
     }
 
-    public CloudApp findByNameAndVersion(String name, String version) {
-        return uniqueResult(criteria().add(
-                Restrictions.and(
-                        Restrictions.eq("name", name),
-                        Restrictions.eq("version", version)
-                )
-        ));
-    }
-
 }

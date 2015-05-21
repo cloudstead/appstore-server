@@ -6,7 +6,6 @@ import cloudos.appstore.model.*;
 import cloudos.appstore.model.app.AppLayout;
 import cloudos.appstore.model.app.AppManifest;
 import cloudos.appstore.model.support.AppBundle;
-import cloudos.appstore.model.support.CloudAppVersion;
 import cloudos.appstore.model.support.DefineCloudAppRequest;
 import cloudos.appstore.server.AppStoreApiConfiguration;
 import com.qmino.miredot.annotations.ReturnType;
@@ -34,10 +33,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static cloudos.appstore.ValidationConstants.ERR_APP_CANNOT_DELETE_ACTIVE_VERSION;
 import static cloudos.appstore.ValidationConstants.ERR_APP_PUBLISHER_INVALID;
 import static org.cobbzilla.util.io.FileUtil.abs;
 import static org.cobbzilla.util.string.StringUtil.empty;
+import static org.cobbzilla.wizard.resources.ResourceUtil.notFound;
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -47,6 +46,7 @@ public class CloudAppsResource {
 
     @Autowired private AppStoreApiConfiguration configuration;
     @Autowired private CloudAppDAO appDAO;
+    @Autowired private CloudAppVersionDAO versionDAO;
     @Autowired private PublishedAppDAO publishedAppDAO;
     @Autowired private AppStorePublisherDAO publisherDAO;
     @Autowired private AppStorePublisherMemberDAO memberDAO;
@@ -89,7 +89,7 @@ public class CloudAppsResource {
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
         final CloudApp app = appDAO.findByName(name);
-        if (app == null) return ResourceUtil.notFound(name);
+        if (app == null) return notFound(name);
 
         if (!isMember(account, app)) return ResourceUtil.forbidden();
 
@@ -107,7 +107,7 @@ public class CloudAppsResource {
      * @return the version of the app
      */
     @POST
-    @ReturnType("cloudos.appstore.model.support.CloudAppVersion")
+    @ReturnType("cloudos.appstore.model.CloudAppVersion")
     public Response defineAppVersion(@Context HttpContext context,
                                      @Valid DefineCloudAppRequest request) {
 
@@ -192,33 +192,46 @@ public class CloudAppsResource {
             return Response.serverError().build();
         }
 
-        // write appstore metadata
-        final AppStoreAppMetadata metadata = new AppStoreAppMetadata()
-                .setBundleSha(ShaUtil.sha256_file(finalAppLayout.getBundleFile()))
-                .setStatus(CloudAppStatus.created);
-        metadata.write(finalAppLayout.getVersionDir());
+        // Is there a version?
+        CloudAppVersion appVersion = versionDAO.findByNameAndVersion(manifest.getName(), manifest.getVersion());
+        if (appVersion != null) {
+            // should never happen
+            final String msg = "{err.defineApp.versionExists}";
+            log.error(msg);
+            return ResourceUtil.invalid(msg);
+        }
+        appVersion = new CloudAppVersion()
+                .setApp(manifest.getName())
+                .setVersion(manifest.getVersion())
+                .setBundleSha(ShaUtil.sha256_file(finalAppLayout.getBundleFile()));
+        appVersion = versionDAO.create(appVersion);
 
-        return Response.ok(new CloudAppVersion(app.getName(), proposedVersion)).build();
+        return Response.ok(appVersion).build();
     }
 
     /**
-     * Retrieve metadata associated with a particular app version
+     * Retrieve a particular app version
      * @param context used to retrieve the logged-in user session
      * @param name name of the app
      * @param version version of the app
-     * @return The AppStoreAppMetadata associated with the app version
+     * @return The version information
      */
     @GET
-    @Path("/{name}/versions/{version}/metadata")
-    @ReturnType("cloudos.appstore.model.AppStoreAppMetadata")
-    public Response updateStatus(@Context HttpContext context,
-                                 @PathParam("name") String name,
-                                 @PathParam("version") String version) {
+    @Path("/{name}/versions/{version}")
+    @ReturnType("cloudos.appstore.model.CloudAppVersion")
+    public Response getVersion(@Context HttpContext context,
+                               @PathParam("name") String name,
+                               @PathParam("version") String version) {
 
-        final File appRepository = configuration.getAppStore().getAppRepository();
-        final AppLayout layout = new AppLayout(appRepository, name, version);
-        if (!layout.exists()) return ResourceUtil.notFound(name+"/"+version);
-        return Response.ok(AppStoreAppMetadata.read(layout.getVersionDir())).build();
+        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+
+        final CloudApp app = appDAO.findByName(name);
+        if (!isMember(account, app)) return ResourceUtil.notFound(name + "/" + version);
+
+        final CloudAppVersion appVersion = versionDAO.findByNameAndVersion(name, version);
+        if (appVersion == null) return notFound(name + "/" + version);
+
+        return Response.ok(appVersion).build();
     }
 
     /**
@@ -227,10 +240,11 @@ public class CloudAppsResource {
      * @param name name of the app
      * @param version version of the app
      * @param status the new status for the app
-     * @return the new status for the app
+     * @return the updated version information
      */
     @POST
     @Path("/{name}/versions/{version}/status")
+    @ReturnType("cloudos.appstore.model.CloudAppVersion")
     public Response updateStatus(@Context HttpContext context,
                                  @PathParam("name") String name,
                                  @PathParam("version") String version,
@@ -239,20 +253,13 @@ public class CloudAppsResource {
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
         final CloudApp app = appDAO.findByName(name);
+        if (app == null) return notFound(name);
         if (!isMember(account, app)) throw new SimpleViolationException(ERR_APP_PUBLISHER_INVALID);
 
-        final AppLayout layout = new AppLayout(configuration.getAppStore().getAppRepository(), name, version);
+        final CloudAppVersion appVersion = versionDAO.findByNameAndVersion(name, version);
+        if (appVersion == null) return notFound(name + "/" + version);
 
-        final File versionDir = layout.getVersionDir();
-        if (!versionDir.exists()) return ResourceUtil.notFound(version);
-
-        final AppStoreAppMetadata metadata = AppStoreAppMetadata.read(versionDir);
-        if (metadata.getStatus() == status) {
-            log.info("No status change, returning ("+status+")");
-            return Response.notModified().build();
-        }
-
-        final boolean shouldRefreshApps = metadata.isPublished() || status.isPublished();
+        final boolean shouldRefreshApps = appVersion.isPublished() || status.isPublished();
 
         try {
             switch (status) {
@@ -262,17 +269,17 @@ public class CloudAppsResource {
 
                 case pending:
                     // they are requesting to publish the app, this is fine
-                    metadata.setStatus(status);
-                    metadata.write(versionDir);
-                    return Response.ok(status).build();
+                    appVersion.setStatus(status);
+                    versionDAO.update(appVersion);
+                    break;
 
                 case published:
                     // admins do this to pending requests, makes the app publicly published
                     if (account.isAdmin()) {
-                        metadata.setStatus(status);
-                        metadata.setApprovedBy(account.getUuid());
-                        metadata.write(versionDir);
-                        return Response.ok(status).build();
+                        appVersion.setStatus(status);
+                        appVersion.setApprovedBy(account.getUuid());
+                        versionDAO.update(appVersion);
+                        break;
                     }
                     // non-admins are not allowed to publish
                     return ResourceUtil.forbidden();
@@ -280,16 +287,16 @@ public class CloudAppsResource {
                 case hidden:
                     // anyone can make an app hidden.
                     // it will not be listed in app store search results, but can still be installed if caller knows the name + version
-                    metadata.setStatus(status);
-                    metadata.write(versionDir);
-                    return Response.ok(status).build();
+                    appVersion.setStatus(status);
+                    versionDAO.update(appVersion);
+                    break;
 
                 case retired:
                     // anyone can make an app retired.
                     // it will not be listed in app store search results and cannot be installed
-                    metadata.setStatus(status);
-                    metadata.write(versionDir);
-                    return Response.ok(status).build();
+                    appVersion.setStatus(status);
+                    versionDAO.update(appVersion);
+                    break;
 
                 default:
                     return ResourceUtil.invalid("{err.app.version.status.invalid}");
@@ -298,10 +305,20 @@ public class CloudAppsResource {
         } finally {
             if (shouldRefreshApps) publishedAppDAO.flushApps();
         }
+
+        return Response.ok(appVersion).build();
     }
 
+    /**
+     * Delete an app version
+     * @param context used to retrieve the logged-in user session
+     * @param name name of the app
+     * @param version version of the app
+     * @return upon success, status code 200 with an empty response
+     */
     @DELETE
     @Path("/{name}/versions/{version}")
+    @ReturnType("java.lang.Void")
     public Response deleteAppVersion(@Context HttpContext context,
                                      @PathParam("name") String name,
                                      @PathParam("version") String version) {
@@ -309,9 +326,11 @@ public class CloudAppsResource {
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
         final CloudApp app = appDAO.findByName(name);
+        if (app == null) return notFound(name);
         if (!isMember(account, app)) throw new SimpleViolationException(ERR_APP_PUBLISHER_INVALID);
 
-        if (app.getActiveVersion().equals(version)) throw new SimpleViolationException(ERR_APP_CANNOT_DELETE_ACTIVE_VERSION);
+        final CloudAppVersion appVersion = versionDAO.findByNameAndVersion(name, version);
+        if (appVersion == null) return notFound(name + "/" + version);
 
         final AppLayout layout = new AppLayout(configuration.getAppStore().getAppRepository(), name, version);
         if (layout.getVersionDir().exists()) {
@@ -319,21 +338,34 @@ public class CloudAppsResource {
             FileUtils.deleteQuietly(layout.getVersionDir());
         }
 
+        versionDAO.delete(appVersion.getUuid());
+
         return Response.ok().build();
     }
 
+    /**
+     * Delete an app and all of its versions.
+     * @param context used to retrieve the logged-in user session
+     * @param name name of the app
+     * @return upon success, status code 200 with an empty response
+     */
     @DELETE
     @Path("/{name}")
+    @ReturnType("java.lang.Void")
     public Response deleteApp(@Context HttpContext context,
                               @PathParam("name") String name) {
 
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
         final CloudApp app = appDAO.findByName(name);
-        if (app == null) return ResourceUtil.notFound(name);
+        if (app == null) return notFound(name);
 
         // ensure that the caller is a member of the organization
         if (!isMember(account, app)) return ResourceUtil.forbidden();
+
+        for (CloudAppVersion appVersion : versionDAO.findByApp(name)) {
+            versionDAO.delete(appVersion.getUuid());
+        }
 
         // todo: move it to a trash/archive folder it so we can "undo"?
         final AppLayout appLayout = new AppLayout(configuration.getAppStore().getAppRepository(), name);
@@ -351,7 +383,7 @@ public class CloudAppsResource {
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
         final CloudApp app = appDAO.findByUuid(uuid);
-        if (app == null) return ResourceUtil.notFound(uuid);
+        if (app == null) return notFound(uuid);
 
         // ensure that the caller is a member of the organization
         if (!isMember(account, app)) return ResourceUtil.forbidden();
@@ -369,7 +401,7 @@ public class CloudAppsResource {
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
         final CloudApp app = appDAO.findByUuid(uuid);
-        if (app == null) return ResourceUtil.notFound(uuid);
+        if (app == null) return notFound(uuid);
 
         // ensure that the caller is a member of the organization
         if (!isMember(account, app)) return ResourceUtil.forbidden();
@@ -391,7 +423,7 @@ public class CloudAppsResource {
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
         final CloudApp app = appDAO.findByUuid(uuid);
-        if (app == null) return ResourceUtil.notFound(uuid);
+        if (app == null) return notFound(uuid);
 
         // ensure that the caller is a member of the organization
         if (!isMember(account, app)) return ResourceUtil.forbidden();
@@ -409,7 +441,7 @@ public class CloudAppsResource {
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
         final CloudApp app = appDAO.findByUuid(uuid);
-        if (app == null) return ResourceUtil.notFound(uuid);
+        if (app == null) return notFound(uuid);
 
         // ensure that the caller is a member of the organization
         if (!isMember(account, app)) return ResourceUtil.forbidden();
@@ -424,9 +456,10 @@ public class CloudAppsResource {
     }
 
     private boolean isMember(AppStoreAccount account, CloudApp app) {
-        // caller must be a member of the publisher
-        return AppStorePublishersResource.isMember(account.getUuid(), app.getPublisher(), memberDAO)
-                || account.isAdmin(); // or an admin
+        // caller must be a member of the publisher, or an admin.
+        return app != null
+                && (AppStorePublishersResource.isMember(account.getUuid(), app.getPublisher(), memberDAO)
+                    || account.isAdmin()); // or an admin
     }
 
     protected CloudApp findAppByUuidOrName(@PathParam("uuid") String uuid) {

@@ -3,12 +3,9 @@ package cloudos.appstore;
 import cloudos.appstore.model.*;
 import cloudos.appstore.model.support.ApiToken;
 import cloudos.appstore.model.support.AppStoreAccountRegistration;
-import cloudos.appstore.model.support.CloudAppVersion;
 import cloudos.appstore.test.AppStoreTestUtil;
-import cloudos.appstore.test.AssetWebServer;
 import cloudos.appstore.test.TestApp;
 import org.cobbzilla.wizard.api.NotFoundException;
-import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -18,19 +15,11 @@ public class AppStoreCrudIT extends AppStoreITBase {
 
     public static final String DOC_TARGET = "account registration and app publishing";
 
-    public static final String TEST_MANIFEST = "apps/simple-app-manifest.json";
-    public static final String TEST_ICON = "apps/some-icon.png";
-
     private static TestApp testApp;
 
-    protected static AssetWebServer webServer = new AssetWebServer();
-
-    @BeforeClass public static void startTestWebserver() throws Exception {
-        webServer.start();
+    @BeforeClass public static void setupApp() throws Exception {
         testApp = webServer.buildAppTarball(TEST_MANIFEST, null, TEST_ICON);
     }
-
-    @AfterClass public static void stopTestWebserver() throws Exception { webServer.stop(); }
 
     @Test public void testAppCrud () throws Exception {
         apiDocs.startRecording(DOC_TARGET, "register an account and publish an app");
@@ -54,7 +43,7 @@ public class AppStoreCrudIT extends AppStoreITBase {
         assertEquals(registration.getName(), publisher.getName());
 
         apiDocs.addNote("define a cloud app");
-        final CloudAppVersion appVersion = AppStoreTestUtil.newCloudApp(appStoreClient, publisher.getName(), testApp.getBundleUrl(), testApp.getBundleUrlSha());
+        CloudAppVersion appVersion = AppStoreTestUtil.newCloudApp(appStoreClient, publisher.getName(), testApp.getBundleUrl(), testApp.getBundleUrlSha());
         assertEquals(testApp.getNameAndVersion(), appVersion.toString());
 
         apiDocs.addNote("lookup the app we just defined");
@@ -62,20 +51,16 @@ public class AppStoreCrudIT extends AppStoreITBase {
         final CloudApp foundApp = appStoreClient.findApp(appName);
         assertNotNull(foundApp);
 
-        CloudAppStatus appStatus;
-
         apiDocs.addNote("request to publish the app");
         final String version = testApp.getManifest().getVersion();
-        appStatus = appStoreClient.updateAppStatus(appName, version, CloudAppStatus.pending);
-        assertEquals(CloudAppStatus.pending, appStatus);
+        appVersion = appStoreClient.updateAppStatus(appName, version, CloudAppStatus.pending);
+        assertEquals(CloudAppStatus.pending, appVersion.getStatus());
 
         apiDocs.addNote("admin approves the app (note the session token -- it's different because this call is made by an admin user)");
-        appStoreClient.pushToken(adminToken);
-        appStatus = appStoreClient.updateAppStatus(appName, version, CloudAppStatus.published);
-        assertEquals(CloudAppStatus.published, appStatus);
+        publishApp(appName, version);
 
         apiDocs.addNote("verify that the admin is listed as the author");
-        assertEquals(admin.getUuid(), getVersionMetadata(appName, version).getApprovedBy());
+        assertEquals(admin.getUuid(), appStoreClient.findVersion(appName, version).getApprovedBy());
         appStoreClient.popToken();
 
         apiDocs.addNote("delete the account");
@@ -102,17 +87,12 @@ public class AppStoreCrudIT extends AppStoreITBase {
         } catch (NotFoundException expected) { /* noop */ }
 
         try {
-            apiDocs.addNote("try to lookup the version metadata, should fail");
-            getVersionMetadata(appName, version);
+            apiDocs.addNote("try to lookup the version, should fail");
+            appStoreClient.findVersion(appName, version);
             fail("expected 404 response");
         } catch (NotFoundException expected) { /* noop */ }
 
         appStoreClient.popToken();
     }
-
-    public AppStoreAppMetadata getVersionMetadata(String appName, String version) throws Exception {
-        return appStoreClient.findVersionMetadata(appName, version);
-    }
-
 
 }
