@@ -1,6 +1,7 @@
 package cloudos.appstore.main;
 
 import cloudos.appstore.model.AppStoreAccount;
+import cloudos.appstore.model.CloudAppStatus;
 import cloudos.appstore.model.support.DefineCloudAppRequest;
 import lombok.Getter;
 import lombok.Setter;
@@ -46,12 +47,19 @@ public class AppStoreAppsOptions extends AppStoreMainOptions {
     @Getter @Setter private String bundleSha;
     public boolean hasBundleSha () { return !empty(bundleSha); }
 
-    public static final String USAGE_VERSION = "Version (for delete operations)";
+    public static final String USAGE_VERSION = "Version (for update and delete operations)";
     public static final String OPT_VERSION = "-V";
     public static final String LONGOPT_VERSION = "--version";
     @Option(name=OPT_VERSION, aliases=LONGOPT_VERSION, usage=USAGE_VERSION)
     @Getter @Setter private String version;
     public boolean hasVersion() { return !empty(version); }
+
+    public static final String USAGE_STATUS = "Status (for update operations)";
+    public static final String OPT_STATUS = "-U";
+    public static final String LONGOPT_STATUS = "--status";
+    @Option(name=OPT_STATUS, aliases=LONGOPT_STATUS, usage=USAGE_STATUS)
+    @Getter @Setter private CloudAppStatus status;
+    public boolean hasStatus() { return !empty(status); }
 
     public DefineCloudAppRequest getCloudAppRequest(AppStoreAccount account) throws Exception {
         if (!hasBundleSha()) bundleSha = ShaUtil.sha256_url(bundleUrl);

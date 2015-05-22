@@ -31,6 +31,13 @@ public class AppStoreAppsMain extends AppStoreMainBase<AppStoreAppsOptions> {
                 response = api.doPost(uri, toJson(options.getCloudAppRequest(account)));
                 break;
 
+            case update:
+                if (!options.hasStatus()) die(OPT_STATUS+"/"+LONGOPT_STATUS+" is required for "+operation);
+                if (!options.hasName()) die(OPT_NAME+"/"+LONGOPT_NAME+" is required for "+operation);
+                uri += "/" + options.getName() + "/versions/" + options.getVersion() + "/status";
+                response = api.doPost(uri, toJson(options.getStatus()));
+                break;
+
             case read:
                 if (options.hasName()) uri += "/" + options.getName();
                 response = api.doGet(uri);

@@ -64,7 +64,10 @@ public class CloudAppsResource {
 
         final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
 
-        final List<AppStorePublisherMember> memberships = memberDAO.findActiveByAccount(account.getUuid());
+        final List<AppStorePublisherMember> memberships = account.isAdmin()
+                ? memberDAO.findAll()
+                : memberDAO.findActiveByAccount(account.getUuid());
+
         final Map<AppStorePublisher, List<CloudApp>> apps = new HashMap<>();
 
         for (AppStorePublisherMember m : memberships) {
