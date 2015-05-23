@@ -3,12 +3,13 @@ package cloudos.appstore.main;
 import cloudos.appstore.model.AppStorePublisher;
 import lombok.Getter;
 import lombok.Setter;
+import org.cobbzilla.util.daemon.ZillaRuntime;
 import org.cobbzilla.wizard.api.CrudOperation;
 import org.kohsuke.args4j.Option;
 
 import static cloudos.appstore.ApiConstants.PUBLISHERS_ENDPOINT;
 import static org.cobbzilla.util.daemon.ZillaRuntime.die;
-import static org.cobbzilla.util.string.StringUtil.empty;
+import static org.cobbzilla.util.daemon.ZillaRuntime.empty;
 
 public class AppStorePublisherOptions extends AppStoreMainOptions {
 

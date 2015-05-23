@@ -34,12 +34,14 @@ public class AppStoreAppsMain extends AppStoreMainBase<AppStoreAppsOptions> {
             case update:
                 if (!options.hasStatus()) die(OPT_STATUS+"/"+LONGOPT_STATUS+" is required for "+operation);
                 if (!options.hasName()) die(OPT_NAME+"/"+LONGOPT_NAME+" is required for "+operation);
+                if (!options.hasVersion()) die(OPT_VERSION+"/"+LONGOPT_VERSION+" is required for "+operation);
                 uri += "/" + options.getName() + "/versions/" + options.getVersion() + "/status";
                 response = api.doPost(uri, toJson(options.getStatus()));
                 break;
 
             case read:
                 if (options.hasName()) uri += "/" + options.getName();
+                if (options.hasVersion()) uri += "/versions/" + options.getVersion();
                 response = api.doGet(uri);
                 break;
 
@@ -55,7 +57,11 @@ public class AppStoreAppsMain extends AppStoreMainBase<AppStoreAppsOptions> {
                 return;
         }
 
-        out(response.isSuccess() ? response.json : response.toString());
+        if (response.isSuccess()) {
+            out(response.json);
+        } else {
+            die(response.toString());
+        }
     }
 
 }

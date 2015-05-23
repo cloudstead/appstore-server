@@ -94,7 +94,8 @@ public class AppStoreAuthResource {
         // if that didn't work, or we didn't have a token, try email/password auth
         if (tokenRequest.hasEmail()) {
 
-            final AppStoreAccount found = accountDAO.findByEmail(tokenRequest.getEmail());
+            AppStoreAccount found = accountDAO.findByEmail(tokenRequest.getEmail());
+            if (found == null) found = accountDAO.findByName(tokenRequest.getEmail());
 
             if (found == null || !found.getHashedPassword().isCorrectPassword(tokenRequest.getPassword())) {
                 return ResourceUtil.notFound();

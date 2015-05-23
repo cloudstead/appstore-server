@@ -7,7 +7,7 @@ import org.kohsuke.args4j.Option;
 
 import static cloudos.appstore.ApiConstants.MEMBERS_ENDPOINT;
 import static org.cobbzilla.util.daemon.ZillaRuntime.die;
-import static org.cobbzilla.util.string.StringUtil.empty;
+import static org.cobbzilla.util.daemon.ZillaRuntime.empty;
 
 public class AppStoreMemberOptions extends AppStoreMainOptions {
 

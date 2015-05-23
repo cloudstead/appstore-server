@@ -34,8 +34,8 @@ import java.util.List;
 import java.util.Map;
 
 import static cloudos.appstore.ValidationConstants.ERR_APP_PUBLISHER_INVALID;
+import static org.cobbzilla.util.daemon.ZillaRuntime.empty;
 import static org.cobbzilla.util.io.FileUtil.abs;
-import static org.cobbzilla.util.string.StringUtil.empty;
 import static org.cobbzilla.wizard.resources.ResourceUtil.notFound;
 
 @Consumes(MediaType.APPLICATION_JSON)
@@ -96,9 +96,7 @@ public class CloudAppsResource {
 
         if (!isMember(account, app)) return ResourceUtil.forbidden();
 
-        final File appRepository = configuration.getAppStore().getAppRepository();
-        final AppLayout appLayout = new AppLayout(appRepository, app.getName());
-        app.setVersions(appLayout.getVersions());
+        app.setVersions(versionDAO.findByApp(app.getName()));
 
         return Response.ok(app).build();
     }

@@ -9,7 +9,7 @@ import org.cobbzilla.util.security.ShaUtil;
 import org.cobbzilla.wizard.api.CrudOperation;
 import org.kohsuke.args4j.Option;
 
-import static org.cobbzilla.util.string.StringUtil.empty;
+import static org.cobbzilla.util.daemon.ZillaRuntime.empty;
 
 public class AppStoreAppsOptions extends AppStoreMainOptions {
 
