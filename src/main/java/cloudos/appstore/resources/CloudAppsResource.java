@@ -124,90 +124,100 @@ public class CloudAppsResource {
             return Response.serverError().build();
         }
 
-        final AppManifest manifest = bundle.getManifest();
-        final String publisherName = request.hasPublisher() ? request.getPublisher() : account.getName();
-
-        AppStorePublisher publisher = publisherDAO.findByName(publisherName);
-        if (publisher == null) {
-            bundle.cleanup();
-            return ResourceUtil.invalid();
-        }
-
-        CloudApp app = appDAO.findByName(manifest.getName());
-        if (app == null) {
-            app = (CloudApp) new CloudApp()
-                    .setAuthor(account.getUuid())
-                    .setPublisher(publisher.getUuid())
-                    .setName(manifest.getName());
-            app = appDAO.create(app);
-        } else {
-            if (!publisher.getUuid().equals(app.getPublisher())) {
-                // cannot change ownership this way
-                bundle.cleanup();
-                return ResourceUtil.invalid("{err.defineApp.cannotChangePublisher}");
-            }
-            if (!isMember(account, app)) {
-                bundle.cleanup();
-                return ResourceUtil.forbidden(); // no permissions on this app
-            }
-        }
-
-        // This is where it should live in the main repository... anything already there?
-        final File appRepository = configuration.getAppStore().getAppRepository();
-        final AppLayout appLayout = new AppLayout(appRepository, manifest.getName());
-        final List<SemanticVersion> existingVersions = appLayout.getVersions();
-
-        // Pick a version that will work, either the one given, or the next available patch level
-        SemanticVersion proposedVersion = manifest.getSemanticVersion();
-        if (proposedVersion == null) {
-            proposedVersion = SemanticVersion.incrementPatch(existingVersions.get(0));
-        } else {
-            while (existingVersions.contains(proposedVersion)) {
-                proposedVersion = SemanticVersion.incrementPatch(proposedVersion);
-            }
-        }
-        manifest.setVersion(proposedVersion);
-        bundle.writeManifest();
-
-        // re-roll the tarball
-        final AppLayout finalAppLayout = new AppLayout(appRepository, manifest);
-        final File bundleTarball;
         try {
-            bundleTarball = Tarball.roll(bundle.getBundleDir());
+            final AppManifest manifest = bundle.getManifest();
+            final String publisherName = request.hasPublisher() ? request.getPublisher() : account.getName();
 
-        } catch (IOException e) {
+            AppStorePublisher publisher = publisherDAO.findByName(publisherName);
+            if (publisher == null) {
+                bundle.cleanup();
+                return ResourceUtil.invalid();
+            }
+
+            CloudApp app = appDAO.findByName(manifest.getName());
+            if (app == null) {
+                app = (CloudApp) new CloudApp()
+                        .setAuthor(account.getUuid())
+                        .setPublisher(publisher.getUuid())
+                        .setName(manifest.getName());
+                app = appDAO.create(app);
+            } else {
+                if (!publisher.getUuid().equals(app.getPublisher())) {
+                    // cannot change ownership this way
+                    return ResourceUtil.invalid("{err.defineApp.cannotChangePublisher}");
+                }
+                if (!isMember(account, app)) {
+                    return ResourceUtil.forbidden(); // no permissions on this app
+                }
+            }
+
+            // This is where it should live in the main repository... anything already there?
+            final File appRepository = configuration.getAppStore().getAppRepository();
+            final AppLayout appLayout = new AppLayout(appRepository, manifest.getName());
+            final List<SemanticVersion> existingVersions = appLayout.getVersions();
+
+            // Pick a version that will work, either the one given, or the next available patch level
+            SemanticVersion proposedVersion = manifest.getSemanticVersion();
+            if (proposedVersion == null) {
+                proposedVersion = SemanticVersion.incrementPatch(existingVersions.get(0));
+            } else {
+                while (existingVersions.contains(proposedVersion)) {
+                    proposedVersion = SemanticVersion.incrementPatch(proposedVersion);
+                }
+            }
+            manifest.setSemanticVersion(proposedVersion);
+            bundle.writeManifest();
+
+            // re-roll the tarball
+            final AppLayout finalAppLayout = new AppLayout(appRepository, manifest);
+            final File bundleTarball;
+            try {
+                bundleTarball = Tarball.roll(bundle.getBundleDir());
+
+            } catch (IOException e) {
+                final String msg = "{err.defineApp.rerollingBundleTarball}";
+                log.error(msg, e);
+                return Response.serverError().build();
+            }
+
+            if (!finalAppLayout.getVersionDir().exists() && !finalAppLayout.getVersionDir().mkdirs()) {
+                final String msg = "{err.defineApp.creatingVersionDir}";
+                log.error(msg + ": " + abs(finalAppLayout.getVersionDir()));
+                return Response.serverError().build();
+            }
+            if (!bundleTarball.renameTo(finalAppLayout.getBundleFile())) {
+                final String msg = "{err.defineApp.renamingBundleTarball}";
+                log.error(msg);
+                return Response.serverError().build();
+            }
+            if (manifest.hasAssets()) {
+                final AppLayout bundleLayout = new AppLayout(manifest.getScrubbedName(), bundle.getBundleDir());
+                if (!bundleLayout.copyAssets(finalAppLayout)) {
+                    final String msg = "{err.defineApp.copyingAssets}";
+                    log.error(msg);
+                    return Response.serverError().build();
+                }
+            }
+
+            // Is there a version?
+            CloudAppVersion appVersion = versionDAO.findByNameAndVersion(manifest.getName(), manifest.getVersion());
+            if (appVersion != null) {
+                // should never happen
+                final String msg = "{err.defineApp.versionExists}";
+                log.error(msg);
+                return ResourceUtil.invalid(msg);
+            }
+            appVersion = new CloudAppVersion()
+                    .setApp(manifest.getName())
+                    .setVersion(manifest.getVersion())
+                    .setBundleSha(ShaUtil.sha256_file(finalAppLayout.getBundleFile()));
+            appVersion = versionDAO.create(appVersion);
+
+            return Response.ok(appVersion).build();
+
+        } finally {
             bundle.cleanup();
-            final String msg = "{err.defineApp.rerollingBundleTarball}";
-            log.error(msg, e);
-            return Response.serverError().build();
         }
-
-        if (!finalAppLayout.getVersionDir().exists() && !finalAppLayout.getVersionDir().mkdirs()) {
-            final String msg = "{err.defineApp.creatingVersionDir}";
-            log.error(msg+": "+abs(finalAppLayout.getVersionDir()));
-            return Response.serverError().build();
-        }
-        if (!bundleTarball.renameTo(finalAppLayout.getBundleFile())) {
-            final String msg = "{err.defineApp.renamingBundleTarball}";
-            log.error(msg);
-            return Response.serverError().build();
-        }
-
-        // Is there a version?
-        CloudAppVersion appVersion = versionDAO.findByNameAndVersion(manifest.getName(), manifest.getVersion());
-        if (appVersion != null) {
-            // should never happen
-            final String msg = "{err.defineApp.versionExists}";
-            log.error(msg);
-            return ResourceUtil.invalid(msg);
-        }
-        appVersion = new CloudAppVersion()
-                .setApp(manifest.getName())
-                .setVersion(manifest.getVersion())
-                .setBundleSha(ShaUtil.sha256_file(finalAppLayout.getBundleFile()));
-        appVersion = versionDAO.create(appVersion);
-
-        return Response.ok(appVersion).build();
     }
 
     /**
