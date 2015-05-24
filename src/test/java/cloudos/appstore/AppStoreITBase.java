@@ -33,7 +33,7 @@ public class AppStoreITBase extends ApiDocsResourceIT<AppStoreApiConfiguration, 
     public static final String TEST_ENV_FILE = ".appstore-server-test.env";
     @Getter protected final Map<String, String> serverEnvironment = CommandShell.loadShellExportsOrDie(TEST_ENV_FILE);
 
-    protected AppStoreApiClient appStoreClient = new AppStoreApiClient(getConnectionInfo()) {
+    protected AppStoreApiClient appStoreClient = new AppStoreApiClient(getConnectionInfo(), getHttpClient()) {
         @Override protected String getTokenHeader() { return ApiConstants.H_TOKEN; }
         @Override public synchronized String getBaseUri() { return server.getClientUri(); }
     };

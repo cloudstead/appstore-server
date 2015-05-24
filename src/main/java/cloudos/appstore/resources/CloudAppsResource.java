@@ -36,7 +36,9 @@ import java.util.Map;
 import static cloudos.appstore.ValidationConstants.ERR_APP_PUBLISHER_INVALID;
 import static org.cobbzilla.util.daemon.ZillaRuntime.empty;
 import static org.cobbzilla.util.io.FileUtil.abs;
+import static org.cobbzilla.wizard.resources.ResourceUtil.invalid;
 import static org.cobbzilla.wizard.resources.ResourceUtil.notFound;
+import static org.cobbzilla.wizard.resources.ResourceUtil.streamFile;
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -152,7 +154,7 @@ public class CloudAppsResource {
             }
 
             // This is where it should live in the main repository... anything already there?
-            final File appRepository = configuration.getAppStore().getAppRepository();
+            final File appRepository = getAppRepository();
             final AppLayout appLayout = new AppLayout(appRepository, manifest.getName());
             final List<SemanticVersion> existingVersions = appLayout.getVersions();
 
@@ -218,6 +220,83 @@ public class CloudAppsResource {
         } finally {
             bundle.cleanup();
         }
+    }
+
+    protected File getAppRepository() {
+        return configuration.getAppStore().getAppRepository();
+    }
+
+    /**
+     * Retrieve an asset for the latest version of an app
+     * @param context used to retrieve the logged-in user session
+     * @param name name of the app
+     * @param asset name of the asset to retrieve. Use 'bundle', 'largeIcon', 'smallIcon', or 'taskbarIcon'
+     * @return The asset for the latest version as a stream, or 404 if not found
+     */
+    @GET
+    @Path("/{name}/assets/{asset}")
+    @ReturnType("cloudos.appstore.model.CloudAppVersion")
+    public Response getAsset(@Context HttpContext context,
+                             @PathParam("name") String name,
+                             @PathParam("asset") String asset) {
+
+        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+
+        final CloudApp app = appDAO.findByName(name);
+        if (!isMember(account, app)) return ResourceUtil.notFound(name);
+
+        final CloudAppVersion appVersion = versionDAO.findLatestPublishedVersion(name);
+        if (appVersion == null) return notFound(name + "/any-published-version");
+
+        if (empty(asset)) return invalid("err.asset.empty");
+
+        return streamAsset(asset, appVersion);
+    }
+
+    /**
+     * Retrieve an asset for a particular version of an app
+     * @param context used to retrieve the logged-in user session
+     * @param name name of the app
+     * @param version version of the app
+     * @param asset name of the asset to retrieve. Use 'bundle', 'largeIcon', 'smallIcon', or 'taskbarIcon'
+     * @return The asset for the latest version as a stream, or 404 if not found
+     */
+    @GET
+    @Path("/{name}/versions/{version}/assets/{asset}")
+    @ReturnType("cloudos.appstore.model.CloudAppVersion")
+    public Response getAsset(@Context HttpContext context,
+                             @PathParam("name") String name,
+                             @PathParam("version") String version,
+                             @PathParam("asset") String asset) {
+
+        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+
+        final CloudApp app = appDAO.findByName(name);
+        if (!isMember(account, app)) return ResourceUtil.notFound(name);
+
+        final CloudAppVersion appVersion = versionDAO.findByNameAndVersion(name, version);
+        if (appVersion == null) return notFound(name + "/any-published-version");
+
+        if (empty(asset)) return invalid("err.asset.empty");
+
+        return streamAsset(asset, appVersion);
+    }
+
+    protected Response streamAsset(@PathParam("asset") String asset, CloudAppVersion appVersion) {
+        final AppLayout appLayout = new AppLayout(getAppRepository(), appVersion.getApp(), appVersion.getVersion());
+        final File assetFile;
+        if (AppLayout.BUNDLE_TARBALL.startsWith(asset)) {
+            return streamFile(appLayout.getBundleFile());
+        } else {
+            for (String assetType : AppMutableData.APP_ASSETS) {
+                if (assetType.startsWith(asset)) {
+                    assetFile = appLayout.findDefaultAsset(assetType);
+                    if (assetFile == null) return notFound(asset);
+                    return streamFile(assetFile);
+                }
+            }
+        }
+        return notFound(asset);
     }
 
     /**
@@ -343,7 +422,7 @@ public class CloudAppsResource {
         final CloudAppVersion appVersion = versionDAO.findByNameAndVersion(name, version);
         if (appVersion == null) return notFound(name + "/" + version);
 
-        final AppLayout layout = new AppLayout(configuration.getAppStore().getAppRepository(), name, version);
+        final AppLayout layout = new AppLayout(getAppRepository(), name, version);
         if (layout.getVersionDir().exists()) {
             // todo: move it to a trash/archive folder it so we can "undo"?
             FileUtils.deleteQuietly(layout.getVersionDir());
@@ -379,7 +458,7 @@ public class CloudAppsResource {
         }
 
         // todo: move it to a trash/archive folder it so we can "undo"?
-        final AppLayout appLayout = new AppLayout(configuration.getAppStore().getAppRepository(), name);
+        final AppLayout appLayout = new AppLayout(getAppRepository(), name);
         FileUtils.deleteQuietly(appLayout.getAppDir());
         appDAO.delete(app.getUuid());
 

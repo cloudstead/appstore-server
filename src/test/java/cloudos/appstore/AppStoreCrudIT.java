@@ -9,6 +9,8 @@ import org.cobbzilla.wizard.api.NotFoundException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.File;
+
 import static org.junit.Assert.*;
 
 public class AppStoreCrudIT extends AppStoreITBase {
@@ -51,6 +53,18 @@ public class AppStoreCrudIT extends AppStoreITBase {
         final CloudApp foundApp = appStoreClient.findApp(appName);
         assertNotNull(foundApp);
 
+        apiDocs.addNote("request the bundle asset for this version");
+        apiDocs.setBinaryResponse(".tar.gz tarball");
+        File bundleFile = appStoreClient.getAppBundle(appName, appVersion.getVersion());
+        assertNotNull(bundleFile);
+        assertTrue(bundleFile.length() > 0);
+
+        apiDocs.addNote("request the taskbarIcon asset for this version");
+        apiDocs.setBinaryResponse("PNG image");
+        File taskbarIcon = appStoreClient.getAppAsset(appName, appVersion.getVersion(), "taskbarIcon");
+        assertNotNull(taskbarIcon);
+        assertTrue(taskbarIcon.length() > 0);
+
         apiDocs.addNote("request to publish the app");
         final String version = testApp.getManifest().getVersion();
         appVersion = appStoreClient.updateAppStatus(appName, version, CloudAppStatus.pending);
@@ -62,6 +76,18 @@ public class AppStoreCrudIT extends AppStoreITBase {
         apiDocs.addNote("verify that the admin is listed as the author");
         assertEquals(admin.getUuid(), appStoreClient.findVersion(appName, version).getApprovedBy());
         appStoreClient.popToken();
+
+        apiDocs.addNote("request the latest bundle asset");
+        apiDocs.setBinaryResponse(".tar.gz tarball");
+        bundleFile = appStoreClient.getLatestAppBundle(appName);
+        assertNotNull(bundleFile);
+        assertTrue(bundleFile.length() > 0);
+
+        apiDocs.addNote("request the latest taskbarIcon asset");
+        apiDocs.setBinaryResponse("PNG image");
+        taskbarIcon = appStoreClient.getLatestAsset(appName, "taskbarIcon");
+        assertNotNull(taskbarIcon);
+        assertTrue(taskbarIcon.length() > 0);
 
         apiDocs.addNote("delete the account");
         appStoreClient.deleteAccount();
