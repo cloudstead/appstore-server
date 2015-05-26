@@ -6,14 +6,10 @@ import net.rubyeye.xmemcached.XMemcachedClientBuilder;
 import cloudos.appstore.model.support.ApiToken;
 import org.springframework.stereotype.Repository;
 
-import java.util.concurrent.TimeUnit;
-
 import static org.cobbzilla.util.daemon.ZillaRuntime.die;
 
 @Repository
 public class ApiTokenDAO {
-
-    public static final int EXPIRATION = (int) TimeUnit.DAYS.toSeconds(1);
 
     private final MemcachedClient client;
 
@@ -26,7 +22,7 @@ public class ApiTokenDAO {
     public ApiToken generateNewToken (String accountUuid) {
         final ApiToken token = newToken();
         try {
-            if (!client.add(token.getToken(), EXPIRATION, accountUuid)) {
+            if (!client.add(token.getToken(), ApiToken.EXPIRATION_SECONDS, accountUuid)) {
                 die("generateNewToken: error writing to memcached: call returned false");
             }
         } catch (Exception e) {
@@ -65,7 +61,7 @@ public class ApiTokenDAO {
             if (account == null) return null; // token not found
 
             // create new token
-            if (client.set(newToken.getToken(), EXPIRATION, account)) return null;
+            if (client.set(newToken.getToken(), ApiToken.EXPIRATION_SECONDS, account)) return null;
 
             // delete old token (ignore return code)
             client.delete(token.getToken());
