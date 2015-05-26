@@ -23,18 +23,25 @@ public class CloudAppVersionDAO extends AbstractCRUDDAO<CloudAppVersion> {
         return uniqueResult(criteria().add(
                 Restrictions.and(
                         Restrictions.eq("app", name),
-                        Restrictions.eq("version", version)
-                )
-        ));
+                        Restrictions.eq("version", version))));
     }
 
     public List<CloudAppVersion> findPublishedVersions() {
         return list(criteria().add(Restrictions.eq("status", CloudAppStatus.published)));
     }
 
+    public List<CloudAppVersion> findPublishedVersions(String name) {
+        return list(criteria().add(
+                Restrictions.and(
+                        Restrictions.eq("app", name),
+                        Restrictions.or(
+                                Restrictions.eq("status", CloudAppStatus.hidden),
+                                Restrictions.eq("status", CloudAppStatus.published)))));
+    }
+
     public CloudAppVersion findLatestPublishedVersion(String name) {
         final SortedSet<CloudAppVersion> sorted = new TreeSet<>(CloudAppVersion.LATEST_VERSION_FIRST);
-        sorted.addAll(findPublishedVersions());
+        sorted.addAll(findPublishedVersions(name));
         return empty(sorted) ? null : sorted.first();
     }
 
