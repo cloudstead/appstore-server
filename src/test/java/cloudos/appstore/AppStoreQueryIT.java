@@ -40,9 +40,10 @@ public class AppStoreQueryIT extends AppStoreITBase {
     }
 
     private CloudApp buildCloudApp(int i) {
-        return (CloudApp) new CloudApp()
+        return new CloudApp()
                 .setAuthor(admin.getUuid())
                 .setPublisher(publisher.getUuid())
+                .setVisibility(AppVisibility.everyone)
                 .setName(i + "-" + randomName());
     }
 
@@ -58,6 +59,7 @@ public class AppStoreQueryIT extends AppStoreITBase {
                 .setAppName(appVersion.getApp())
                 .setVersion(appVersion.getVersion())
                 .setStatus(CloudAppStatus.published)
+                .setVisibility(AppVisibility.everyone)
                 .setInteractive(true)
                 .setBundleUrl(randomName())
                 .setBundleUrlSha(appVersion.getBundleSha())

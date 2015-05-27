@@ -5,7 +5,6 @@ import cloudos.appstore.model.app.AppLayout;
 import cloudos.appstore.model.app.AppManifest;
 import cloudos.appstore.server.AppStoreApiConfiguration;
 import lombok.extern.slf4j.Slf4j;
-import org.cobbzilla.util.daemon.ZillaRuntime;
 import org.cobbzilla.wizard.dao.SearchResults;
 import org.cobbzilla.wizard.model.ResultPage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,11 +29,13 @@ public class PublishedAppDAO {
     // for now we just keep them all in memory
     private final AtomicReference<List<PublishedApp>> apps = new AtomicReference<>();
 
-    public PublishedApp findByNameAndVersion(String name, String version) {
+    public void refresh(CloudApp cloudApp) {
         for (PublishedApp app : getApps()) {
-            if (app.getAppName().equals(name) && app.getVersion().equals(version)) return app;
+            if (app.getAppUuid().equals(cloudApp.getUuid())) {
+                app.setVisibility(cloudApp.getVisibility());
+                return;
+            }
         }
-        return null;
     }
 
     protected List<PublishedApp> getApps () {
@@ -52,6 +53,31 @@ public class PublishedAppDAO {
     }
 
     public void flushApps () { apps.set(null); }
+
+    public PublishedApp findByNameAndVersion(AppStoreAccount account,
+                                             AppStorePublisher appPublisher,
+                                             List<AppStorePublisherMember> memberships,
+                                             String name,
+                                             String version) {
+
+        for (PublishedApp app : getApps()) {
+            if (app.getAppName().equals(name) && app.getVersion().equals(version)) {
+                switch (app.getVisibility()) {
+                    case everyone: return app;
+                    case members:
+                        if (empty(memberships)) return null;
+                        for (AppStorePublisherMember m : memberships) {
+                            if (m.getPublisher().equals(app.getPublisher())) return app;
+                        }
+                        return null;
+                    default:
+                    case publisher:
+                        return app.getPublisher().equals(account.getUuid()) ? app : null;
+                }
+            }
+        }
+        return null;
+    }
 
     protected List<PublishedApp> initPublishedApps() {
 
@@ -71,7 +97,7 @@ public class PublishedAppDAO {
         final String appName = appVersion.getApp();
         final String version = appVersion.getVersion();
 
-        final CloudApp cloudApp = appDAO.findByName(appName);
+        final CloudApp cloudApp = appDAO.findByUuid(appVersion.getApp());
         if (cloudApp == null) die("buildPublishedApp: app not found: "+ appName);
 
         final AppStoreAccount author = accountDAO.findByUuid(cloudApp.getAuthor());
@@ -95,12 +121,16 @@ public class PublishedAppDAO {
                 .setInteractive(manifest.isInteractive())
                 .setBundleUrl(configuration.getPublicBundleUrl(appName, version))
                 .setBundleUrlSha(appVersion.getBundleSha())
-                .setStatus(appVersion.getStatus());
+                .setStatus(appVersion.getStatus())
+                .setVisibility(cloudApp.getVisibility());
 
         return app;
     }
 
-    public SearchResults<PublishedApp> search(ResultPage query) {
+    public SearchResults<PublishedApp> search(AppStoreAccount account,
+                                              List<AppStorePublisherMember> memberships,
+                                              ResultPage query) {
+
         final List<PublishedApp> all = new ArrayList<>(getApps());
         final List<PublishedApp> found = new ArrayList<>();
 
@@ -119,7 +149,7 @@ public class PublishedAppDAO {
         }
 
         // find all matches
-        for (PublishedApp app : all) if (matches(query, app)) found.add(app);
+        for (PublishedApp app : all) if (matches(query, app, account, memberships)) found.add(app);
 
         // select proper page of matches
         final List<PublishedApp> page = new ArrayList<>(query.getPageSize());
@@ -131,13 +161,38 @@ public class PublishedAppDAO {
         return new SearchResults<>(page, all.size());
     }
 
-    private boolean matches(ResultPage page, PublishedApp app) {
+    private boolean matches(ResultPage page,
+                            PublishedApp app,
+                            AppStoreAccount account,
+                            List<AppStorePublisherMember> memberships) {
+
+        final AppVisibility visibility = app.getVisibility();
+        if (account == null && visibility != AppVisibility.everyone) return false;
+
+        if (account == null || !account.isAdmin()) {
+            if (visibility == AppVisibility.members) {
+                if (account == null || !account.isAdmin() || empty(memberships) || !isMember(app.getPublisher(), memberships)) {
+                    return false;
+                }
+            } else if (visibility != AppVisibility.everyone) {
+                if (account == null || !account.isAdmin() || !account.getUuid().equals(app.getPublisher())) {
+                    return false;
+                }
+            }
+        }
         final String filter = page.getFilter();
         return empty(filter)
                 || app.getAppName().contains(filter)
                 || app.getData().getBlurb().contains(filter)
                 || app.getData().getDescription().contains(filter)
                 || app.getAuthor().contains(filter);
+    }
+
+    private boolean isMember(String publisher, List<AppStorePublisherMember> memberships) {
+        for (AppStorePublisherMember m : memberships) {
+            if (m.isActive() && m.getPublisher().equals(publisher)) return true;
+        }
+        return false;
     }
 
 }

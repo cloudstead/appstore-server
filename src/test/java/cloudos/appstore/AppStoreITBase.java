@@ -54,9 +54,9 @@ public class AppStoreITBase extends ApiDocsResourceIT<AppStoreApiConfiguration, 
     @BeforeClass public static void startTestWebserver() throws Exception { webServer.start(); }
     @AfterClass public static void stopTestWebserver() throws Exception { webServer.stop(); }
 
-    public void publishApp(String appName, String version) throws Exception {
+    public void publishApp(String pubName, String appName, String version) throws Exception {
         appStoreClient.pushToken(adminToken);
-        final CloudAppVersion appVersion = appStoreClient.updateAppStatus(appName, version, CloudAppStatus.published);
+        final CloudAppVersion appVersion = appStoreClient.updateAppStatus(pubName, appName, version, CloudAppStatus.published);
         assertEquals(CloudAppStatus.published, appVersion.getStatus());
     }
 

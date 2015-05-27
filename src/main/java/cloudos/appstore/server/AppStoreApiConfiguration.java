@@ -13,8 +13,11 @@ import org.cobbzilla.wizard.server.config.RestServerConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.cobbzilla.util.io.FileUtil.mkdirOrDie;
 
 @Configuration
 public class AppStoreApiConfiguration extends RestServerConfiguration
@@ -44,4 +47,9 @@ public class AppStoreApiConfiguration extends RestServerConfiguration
                 + "/apps/" + appName + "/" + version + "/"
                 + AppLayout.BUNDLE_TARBALL;
     }
+
+    public File getAppRepository(String publisherName) {
+        return mkdirOrDie(new File(getAppStore().getAppRepository(), publisherName));
+    }
+
 }

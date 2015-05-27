@@ -17,7 +17,6 @@ import org.cobbzilla.util.security.ShaUtil;
 import org.cobbzilla.wizard.model.SemanticVersion;
 import org.cobbzilla.wizard.resources.ResourceUtil;
 import org.cobbzilla.wizard.validation.ConstraintViolationBean;
-import org.cobbzilla.wizard.validation.SimpleViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -29,16 +28,12 @@ import javax.ws.rs.core.Response;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import static cloudos.appstore.ValidationConstants.ERR_APP_PUBLISHER_INVALID;
+import static org.cobbzilla.util.daemon.ZillaRuntime.die;
 import static org.cobbzilla.util.daemon.ZillaRuntime.empty;
 import static org.cobbzilla.util.io.FileUtil.abs;
-import static org.cobbzilla.wizard.resources.ResourceUtil.invalid;
-import static org.cobbzilla.wizard.resources.ResourceUtil.notFound;
-import static org.cobbzilla.wizard.resources.ResourceUtil.streamFile;
+import static org.cobbzilla.wizard.resources.ResourceUtil.*;
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -56,65 +51,42 @@ public class CloudAppsResource {
     @Autowired private AppPriceDAO priceDAO;
 
     /**
-     * Find all apps that are editable by the current user. The versions for each app will *not* be populated.
+     * Find all apps for a given publisher
      * @param context used to retrieve the logged-in user session
-     * @return a Map of AppStorePublisher-&gt;List&lt;CloudApp&gt;
+     * @param publisher name of the publisher
+     * @return a list of CloudApps
      */
     @GET
-    @ReturnType("java.util.Map<cloudos.appstore.model.AppStorePublisher, cloudos.appstore.model.CloudApp>")
-    public Response findApps (@Context HttpContext context) {
+    @Path("/{publisher}")
+    @ReturnType("java.util.List<cloudos.appstore.model.CloudApp>")
+    public Response findApps (@Context HttpContext context,
+                              @PathParam("publisher") String publisher) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, null, true);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final List<AppStorePublisherMember> memberships = account.isAdmin()
-                ? memberDAO.findAll()
-                : memberDAO.findActiveByAccount(account.getUuid());
-
-        final Map<AppStorePublisher, List<CloudApp>> apps = new HashMap<>();
-
-        for (AppStorePublisherMember m : memberships) {
-            apps.put(publisherDAO.findByUuid(m.getPublisher()), appDAO.findByPublisher(m.getPublisher()));
-        }
+        // findByPublisher enforces visibility limits on account
+        final List<CloudApp> apps = appDAO.findByPublisher(ctx.publisher, ctx.account, ctx.membership);
 
         return Response.ok(apps).build();
     }
 
     /**
-     * Find a single app and all of its versions
-     * @param context used to retrieve the logged-in user session
-     * @param name name of the app to find
-     * @return the CloudApp
-     */
-    @GET
-    @Path("/{name}")
-    @ReturnType("cloudos.appstore.model.CloudApp")
-    public Response findApp (@Context HttpContext context,
-                             @PathParam("name") String name) {
-
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
-
-        final CloudApp app = appDAO.findByName(name);
-        if (app == null) return notFound(name);
-
-        if (!isMember(account, app)) return ResourceUtil.forbidden();
-
-        app.setVersions(versionDAO.findByApp(app.getName()));
-
-        return Response.ok(app).build();
-    }
-
-    /**
      * Upload a new version of an app (this could be the very first version of an app, or an upgrade version)
      * @param context used to retrieve the logged-in user session
-     * @param request the app to define
+     * @param publisher the app will belong to this publisher
+     * @param request the app definition request
      * @return the version of the app
      */
     @POST
+    @Path("/{publisher}")
     @ReturnType("cloudos.appstore.model.CloudAppVersion")
     public Response defineAppVersion(@Context HttpContext context,
+                                     @PathParam("publisher") String publisher,
                                      @Valid DefineCloudAppRequest request) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, null);
+        if (ctx.hasResponse()) return ctx.response;
 
         final List<ConstraintViolationBean> violations = new ArrayList<>();
         final AppBundle bundle;
@@ -128,33 +100,19 @@ public class CloudAppsResource {
 
         try {
             final AppManifest manifest = bundle.getManifest();
-            final String publisherName = request.hasPublisher() ? request.getPublisher() : account.getName();
 
-            AppStorePublisher publisher = publisherDAO.findByName(publisherName);
-            if (publisher == null) {
-                bundle.cleanup();
-                return ResourceUtil.invalid();
-            }
-
-            CloudApp app = appDAO.findByName(manifest.getName());
-            if (app == null) {
-                app = (CloudApp) new CloudApp()
-                        .setAuthor(account.getUuid())
-                        .setPublisher(publisher.getUuid())
-                        .setName(manifest.getName());
-                app = appDAO.create(app);
-            } else {
-                if (!publisher.getUuid().equals(app.getPublisher())) {
-                    // cannot change ownership this way
-                    return ResourceUtil.invalid("{err.defineApp.cannotChangePublisher}");
-                }
-                if (!isMember(account, app)) {
-                    return ResourceUtil.forbidden(); // no permissions on this app
-                }
+            ctx.app = appDAO.findByPublisherAndName(ctx.publisher.getUuid(), manifest.getName());
+            if (ctx.app == null) {
+                ctx.app = new CloudApp()
+                        .setAuthor(ctx.account.getUuid())
+                        .setPublisher(ctx.publisher.getUuid())
+                        .setName(manifest.getName())
+                        .setVisibility(request.getVisibility());
+                ctx.app = appDAO.create(ctx.app);
             }
 
             // This is where it should live in the main repository... anything already there?
-            final File appRepository = getAppRepository();
+            final File appRepository = configuration.getAppRepository(ctx.publisher.getName());
             final AppLayout appLayout = new AppLayout(appRepository, manifest.getName());
             final List<SemanticVersion> existingVersions = appLayout.getVersions();
 
@@ -202,7 +160,7 @@ public class CloudAppsResource {
             }
 
             // Is there a version?
-            CloudAppVersion appVersion = versionDAO.findByNameAndVersion(manifest.getName(), manifest.getVersion());
+            CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), manifest.getVersion());
             if (appVersion != null) {
                 // should never happen
                 final String msg = "{err.defineApp.versionExists}";
@@ -210,80 +168,96 @@ public class CloudAppsResource {
                 return ResourceUtil.invalid(msg);
             }
             appVersion = new CloudAppVersion()
-                    .setApp(manifest.getName())
+                    .setApp(ctx.app.getUuid())
                     .setVersion(manifest.getVersion())
                     .setBundleSha(ShaUtil.sha256_file(finalAppLayout.getBundleFile()));
             appVersion = versionDAO.create(appVersion);
 
-            return Response.ok(appVersion).build();
+            return Response.ok(appVersion.setApp(ctx.app.getName())).build();
 
         } finally {
             bundle.cleanup();
         }
     }
 
-    protected File getAppRepository() {
-        return configuration.getAppStore().getAppRepository();
+    /**
+     * Retrieve info about an app
+     * @param context used to retrieve the logged-in user session
+     * @param publisher name of the publisher
+     * @param name name of the app
+     * @return The app information
+     */
+    @GET
+    @Path("/{publisher}/{name}")
+    @ReturnType("cloudos.appstore.model.CloudApp")
+    public Response getApp(@Context HttpContext context,
+                               @PathParam("publisher") String publisher,
+                               @PathParam("name") String name) {
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        if (ctx.hasResponse()) return ctx.response;
+
+        return Response.ok(ctx.app).build();
     }
 
     /**
      * Retrieve an asset for the latest version of an app
      * @param context used to retrieve the logged-in user session
+     * @param publisher name of the publisher
      * @param name name of the app
      * @param asset name of the asset to retrieve. Use 'bundle', 'largeIcon', 'smallIcon', or 'taskbarIcon'
      * @return The asset for the latest version as a stream, or 404 if not found
      */
     @GET
-    @Path("/{name}/assets/{asset}")
+    @Path("/{publisher}/{name}/assets/{asset}")
     @ReturnType("cloudos.appstore.model.CloudAppVersion")
     public Response getAsset(@Context HttpContext context,
+                             @PathParam("publisher") String publisher,
                              @PathParam("name") String name,
                              @PathParam("asset") String asset) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final CloudApp app = appDAO.findByName(name);
-        if (!isMember(account, app)) return ResourceUtil.notFound(name);
-
-        final CloudAppVersion appVersion = versionDAO.findLatestPublishedVersion(name);
+        final CloudAppVersion appVersion = versionDAO.findLatestPublishedVersion(ctx.app.getUuid());
         if (appVersion == null) return notFound(name + "/any-published-version");
 
         if (empty(asset)) return invalid("err.asset.empty");
 
-        return streamAsset(asset, appVersion);
+        return streamAsset(ctx, appVersion, asset);
     }
 
     /**
      * Retrieve an asset for a particular version of an app
      * @param context used to retrieve the logged-in user session
+     * @param publisher name of the publisher
      * @param name name of the app
      * @param version version of the app
      * @param asset name of the asset to retrieve. Use 'bundle', 'largeIcon', 'smallIcon', or 'taskbarIcon'
      * @return The asset for the latest version as a stream, or 404 if not found
      */
     @GET
-    @Path("/{name}/versions/{version}/assets/{asset}")
+    @Path("/{publisher}/{name}/versions/{version}/assets/{asset}")
     @ReturnType("cloudos.appstore.model.CloudAppVersion")
     public Response getAsset(@Context HttpContext context,
+                             @PathParam("publisher") String publisher,
                              @PathParam("name") String name,
                              @PathParam("version") String version,
                              @PathParam("asset") String asset) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final CloudApp app = appDAO.findByName(name);
-        if (!isMember(account, app)) return ResourceUtil.notFound(name);
-
-        final CloudAppVersion appVersion = versionDAO.findByNameAndVersion(name, version);
+        final CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), version);
         if (appVersion == null) return notFound(name + "/any-published-version");
 
         if (empty(asset)) return invalid("err.asset.empty");
 
-        return streamAsset(asset, appVersion);
+        return streamAsset(ctx, appVersion, asset);
     }
 
-    protected Response streamAsset(@PathParam("asset") String asset, CloudAppVersion appVersion) {
-        final AppLayout appLayout = new AppLayout(getAppRepository(), appVersion.getApp(), appVersion.getVersion());
+    protected Response streamAsset(CloudAppContext ctx, CloudAppVersion appVersion, String asset) {
+        final File appRepository = configuration.getAppRepository(ctx.publisher.getName());
+        final AppLayout appLayout = new AppLayout(appRepository, ctx.app.getName(), appVersion.getVersion());
         final File assetFile;
         if (AppLayout.BUNDLE_TARBALL.startsWith(asset)) {
             return streamFile(appLayout.getBundleFile());
@@ -302,51 +276,91 @@ public class CloudAppsResource {
     /**
      * Retrieve a particular app version
      * @param context used to retrieve the logged-in user session
+     * @param publisher name of the publisher
      * @param name name of the app
      * @param version version of the app
      * @return The version information
      */
     @GET
-    @Path("/{name}/versions/{version}")
+    @Path("/{publisher}/{name}/versions/{version}")
     @ReturnType("cloudos.appstore.model.CloudAppVersion")
     public Response getVersion(@Context HttpContext context,
+                               @PathParam("publisher") String publisher,
                                @PathParam("name") String name,
                                @PathParam("version") String version) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final CloudApp app = appDAO.findByName(name);
-        if (!isMember(account, app)) return ResourceUtil.notFound(name + "/" + version);
-
-        final CloudAppVersion appVersion = versionDAO.findByNameAndVersion(name, version);
+        final CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), version);
         if (appVersion == null) return notFound(name + "/" + version);
 
         return Response.ok(appVersion).build();
     }
 
     /**
+     * Update an app attribute. Currently the only supported attribute is 'visibility'
+     * Visibility is one of: everyone, members, publisher
+     * Everyone = the app is public
+     * Members = only accounts that have memberships with the app publisher may see the app
+     * Publisher = only the owner of the publisher account can see the app.
+     * for a fully private app, use the Self setting, and set the publisher to the default publisher associated with
+     * your account (same name as your account name).
+     * @param context used to retrieve the logged-in user session
+     * @param publisher name of the publisher
+     * @param name name of the app
+     * @param attribute name of the attribute to update
+     * @param value the value for the new attribute
+     * @return the updated version information
+     */
+    @POST
+    @Path("/{publisher}/{name}/attributes/{attribute}")
+    @ReturnType("cloudos.appstore.model.CloudAppVersion")
+    public Response updateAttribute(@Context HttpContext context,
+                                    @PathParam("publisher") String publisher,
+                                    @PathParam("name") String name,
+                                    @PathParam("attribute") String attribute,
+                                    String value) {
+
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        if (ctx.hasResponse()) return ctx.response;
+
+        if (empty(attribute)) return invalid("err.app.update.attribute.empty");
+
+        switch (attribute) {
+            case "visibility":
+                ctx.app.setVisibility(AppVisibility.valueOf(value));
+                appDAO.update(ctx.app);
+                publishedAppDAO.refresh(ctx.app);
+                return Response.ok(ctx.app).build();
+
+            default:
+                return invalid("err.app.update.attribute.invalid", attribute);
+        }
+    }
+
+    /**
      * Update status of a particular app version
      * @param context used to retrieve the logged-in user session
+     * @param publisher name of the publisher
      * @param name name of the app
      * @param version version of the app
      * @param status the new status for the app
      * @return the updated version information
      */
     @POST
-    @Path("/{name}/versions/{version}/status")
+    @Path("/{publisher}/{name}/versions/{version}/status")
     @ReturnType("cloudos.appstore.model.CloudAppVersion")
     public Response updateStatus(@Context HttpContext context,
+                                 @PathParam("publisher") String publisher,
                                  @PathParam("name") String name,
                                  @PathParam("version") String version,
                                  CloudAppStatus status) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final CloudApp app = appDAO.findByName(name);
-        if (app == null) return notFound(name);
-        if (!isMember(account, app)) throw new SimpleViolationException(ERR_APP_PUBLISHER_INVALID);
-
-        final CloudAppVersion appVersion = versionDAO.findByNameAndVersion(name, version);
+        final CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), version);
         if (appVersion == null) return notFound(name + "/" + version);
 
         final boolean shouldRefreshApps = appVersion.isPublished() || status.isPublished();
@@ -365,21 +379,14 @@ public class CloudAppsResource {
 
                 case published:
                     // admins do this to pending requests, makes the app publicly published
-                    if (account.isAdmin()) {
+                    if (ctx.account.isAdmin()) {
                         appVersion.setStatus(status);
-                        appVersion.setApprovedBy(account.getUuid());
+                        appVersion.setApprovedBy(ctx.account.getUuid());
                         versionDAO.update(appVersion);
                         break;
                     }
                     // non-admins are not allowed to publish
                     return ResourceUtil.forbidden();
-
-                case hidden:
-                    // anyone can make an app hidden.
-                    // it will not be listed in app store search results, but can still be installed if caller knows the name + version
-                    appVersion.setStatus(status);
-                    versionDAO.update(appVersion);
-                    break;
 
                 case retired:
                     // anyone can make an app retired.
@@ -402,27 +409,27 @@ public class CloudAppsResource {
     /**
      * Delete an app version
      * @param context used to retrieve the logged-in user session
+     * @param publisher name of the publisher
      * @param name name of the app
      * @param version version of the app
      * @return upon success, status code 200 with an empty response
      */
     @DELETE
-    @Path("/{name}/versions/{version}")
+    @Path("/{publisher}/{name}/versions/{version}")
     @ReturnType("java.lang.Void")
     public Response deleteAppVersion(@Context HttpContext context,
+                                     @PathParam("publisher") String publisher,
                                      @PathParam("name") String name,
                                      @PathParam("version") String version) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final CloudApp app = appDAO.findByName(name);
-        if (app == null) return notFound(name);
-        if (!isMember(account, app)) throw new SimpleViolationException(ERR_APP_PUBLISHER_INVALID);
-
-        final CloudAppVersion appVersion = versionDAO.findByNameAndVersion(name, version);
+        final CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), version);
         if (appVersion == null) return notFound(name + "/" + version);
 
-        final AppLayout layout = new AppLayout(getAppRepository(), name, version);
+        final File appRepository = configuration.getAppRepository(ctx.publisher.getName());
+        final AppLayout layout = new AppLayout(appRepository, name, version);
         if (layout.getVersionDir().exists()) {
             // todo: move it to a trash/archive folder it so we can "undo"?
             FileUtils.deleteQuietly(layout.getVersionDir());
@@ -436,67 +443,57 @@ public class CloudAppsResource {
     /**
      * Delete an app and all of its versions.
      * @param context used to retrieve the logged-in user session
+     * @param publisher name of the publisher
      * @param name name of the app
      * @return upon success, status code 200 with an empty response
      */
     @DELETE
-    @Path("/{name}")
+    @Path("/{publisher}/{name}")
     @ReturnType("java.lang.Void")
     public Response deleteApp(@Context HttpContext context,
+                              @PathParam("publisher") String publisher,
                               @PathParam("name") String name) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final CloudApp app = appDAO.findByName(name);
-        if (app == null) return notFound(name);
-
-        // ensure that the caller is a member of the organization
-        if (!isMember(account, app)) return ResourceUtil.forbidden();
-
-        for (CloudAppVersion appVersion : versionDAO.findByApp(name)) {
+        for (CloudAppVersion appVersion : versionDAO.findByApp(ctx.app.getUuid())) {
             versionDAO.delete(appVersion.getUuid());
         }
 
         // todo: move it to a trash/archive folder it so we can "undo"?
-        final AppLayout appLayout = new AppLayout(getAppRepository(), name);
+        final File appRepository = configuration.getAppRepository(ctx.publisher.getName());
+        final AppLayout appLayout = new AppLayout(appRepository, name);
         FileUtils.deleteQuietly(appLayout.getAppDir());
-        appDAO.delete(app.getUuid());
+        appDAO.delete(ctx.app.getUuid());
 
         return Response.ok().build();
     }
 
     @GET
-    @Path("/{uuid}"+ApiConstants.EP_FOOTPRINT)
+    @Path("/{publisher}/{name}"+ApiConstants.EP_FOOTPRINT)
     public Response getFootprints (@Context HttpContext context,
-                                   @PathParam("uuid") String uuid) {
+                                   @PathParam("publisher") String publisher,
+                                   @PathParam("name") String name) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final CloudApp app = appDAO.findByUuid(uuid);
-        if (app == null) return notFound(uuid);
-
-        // ensure that the caller is a member of the organization
-        if (!isMember(account, app)) return ResourceUtil.forbidden();
-
-        final AppFootprint footprint = footprintDAO.findByApp(uuid);
+        final AppFootprint footprint = footprintDAO.findByApp(ctx.app.getUuid());
         return Response.ok(footprint).build();
     }
 
     @POST
-    @Path("/{uuid}"+ApiConstants.EP_FOOTPRINT)
+    @Path("/{publisher}/{name}"+ApiConstants.EP_FOOTPRINT)
     public Response setFootprint (@Context HttpContext context,
-                                  @PathParam("uuid") String uuid,
+                                  @PathParam("publisher") String publisher,
+                                  @PathParam("name") String name,
                                   AppFootprint footprint) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final CloudApp app = appDAO.findByUuid(uuid);
-        if (app == null) return notFound(uuid);
-
-        // ensure that the caller is a member of the organization
-        if (!isMember(account, app)) return ResourceUtil.forbidden();
-
-        final AppFootprint existing = footprintDAO.findByApp(footprint.getCloudApp());
+        final AppFootprint existing = footprintDAO.findByApp(ctx.app.getUuid());
         if (existing == null) {
             return Response.ok(footprintDAO.create(footprint)).build();
         } else {
@@ -506,37 +503,29 @@ public class CloudAppsResource {
     }
 
     @GET
-    @Path("/{uuid}"+ApiConstants.EP_PRICES)
+    @Path("/{publisher}/{name}"+ApiConstants.EP_PRICES)
     public Response getPrices (@Context HttpContext context,
-                               @PathParam("uuid") String uuid) {
+                               @PathParam("publisher") String publisher,
+                               @PathParam("name") String name) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final CloudApp app = appDAO.findByUuid(uuid);
-        if (app == null) return notFound(uuid);
-
-        // ensure that the caller is a member of the organization
-        if (!isMember(account, app)) return ResourceUtil.forbidden();
-
-        final List<AppPrice> prices = priceDAO.findByApp(uuid);
+        final List<AppPrice> prices = priceDAO.findByApp(ctx.app.getUuid());
         return Response.ok(prices).build();
     }
 
     @POST
-    @Path("/{uuid}"+ApiConstants.EP_PRICES)
+    @Path("/{publisher}/{name}"+ApiConstants.EP_PRICES)
     public Response setPrice (@Context HttpContext context,
-                              @PathParam("uuid") String uuid,
+                              @PathParam("publisher") String publisher,
+                              @PathParam("name") String name,
                               AppPrice price) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final CloudApp app = appDAO.findByUuid(uuid);
-        if (app == null) return notFound(uuid);
-
-        // ensure that the caller is a member of the organization
-        if (!isMember(account, app)) return ResourceUtil.forbidden();
-
-        final AppPrice existing = priceDAO.findByAppAndCurrency(price.getCloudApp(), price.getIsoCurrency());
+        final AppPrice existing = priceDAO.findByAppAndCurrency(ctx.app.getUuid(), price.getIsoCurrency());
         if (existing == null) {
             return Response.ok(priceDAO.create(price)).build();
         } else {
@@ -545,20 +534,60 @@ public class CloudAppsResource {
         }
     }
 
-    private boolean isMember(AppStoreAccount account, CloudApp app) {
-        // caller must be a member of the publisher, or an admin.
-        return app != null
-                && (AppStorePublishersResource.isMember(account.getUuid(), app.getPublisher(), memberDAO)
-                    || account.isAdmin()); // or an admin
-    }
+    private class CloudAppContext {
 
-    protected CloudApp findAppByUuidOrName(@PathParam("uuid") String uuid) {
-        CloudApp app = appDAO.findByUuid(uuid);
-        if (app == null) {
-            app = appDAO.findByName(uuid);
-            if (app == null) return null;
+        public AppStoreAccount account;
+        public AppStorePublisher publisher;
+        public AppStorePublisherMember membership;
+        public CloudApp app;
+
+        public Response response = null;
+
+        public boolean hasResponse() { return response != null; }
+
+        public CloudAppContext(HttpContext context, String pubName, String appName) {
+            this(context, pubName, appName, false);
         }
-        return app;
-    }
 
+        public CloudAppContext(HttpContext context, String pubName, String appName, boolean allowNonmembers) {
+            account = userPrincipal(context);
+            publisher = publisherDAO.findByName(pubName);
+            if (publisher == null) {
+                response = notFound(pubName);
+                return;
+            }
+
+            membership = memberDAO.findByAccountAndPublisher(account.getUuid(), publisher.getUuid());
+            if (!account.isAdmin() && (membership == null || membership.inactive()) && !allowNonmembers) {
+                response = forbidden();
+                return;
+            }
+
+            if (appName != null) {
+                app = appDAO.findByPublisherAndName(publisher.getUuid(), appName);
+                if (app == null) {
+                    response = notFound(appName);
+                    return;
+                }
+
+                switch (app.getVisibility()) {
+                    case everyone: return;
+
+                    case members:
+                        if (!account.isAdmin() && (membership == null || membership.inactive())) {
+                            response = forbidden();
+                        }
+                        return;
+
+                    case publisher:
+                        if (!account.isAdmin() && !publisher.getOwner().equals(account.getUuid())) {
+                            response = forbidden();
+                        }
+                        return;
+
+                    default: die("invalid visibility: "+app.getVisibility());
+                }
+            }
+        }
+    }
 }

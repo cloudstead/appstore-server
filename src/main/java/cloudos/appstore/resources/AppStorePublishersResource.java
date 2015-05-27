@@ -121,7 +121,7 @@ public class AppStorePublishersResource {
         Response deleteResponse;
         final List<CloudApp> apps = cloudAppDAO.findByPublisher(uuid);
         for (CloudApp app : apps) {
-            deleteResponse = appsResource.deleteApp(context, app.getName());
+            deleteResponse = appsResource.deleteApp(context, publisher.getName(), app.getName());
             if (deleteResponse.getStatus() != 200) return deleteResponse;
         }
 

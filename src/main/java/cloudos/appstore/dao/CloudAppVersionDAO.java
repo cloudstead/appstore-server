@@ -15,14 +15,14 @@ import static org.cobbzilla.util.daemon.ZillaRuntime.empty;
 @Repository
 public class CloudAppVersionDAO extends AbstractCRUDDAO<CloudAppVersion> {
 
-    public List<CloudAppVersion> findByApp(String name) {
-        return list(criteria().add(Restrictions.eq("app", name)));
+    public List<CloudAppVersion> findByApp(String appUuid) {
+        return list(criteria().add(Restrictions.eq("app", appUuid)));
     }
 
-    public CloudAppVersion findByNameAndVersion(String name, String version) {
+    public CloudAppVersion findByUuidAndVersion(String appUuid, String version) {
         return uniqueResult(criteria().add(
                 Restrictions.and(
-                        Restrictions.eq("app", name),
+                        Restrictions.eq("app", appUuid),
                         Restrictions.eq("version", version))));
     }
 
@@ -30,18 +30,16 @@ public class CloudAppVersionDAO extends AbstractCRUDDAO<CloudAppVersion> {
         return list(criteria().add(Restrictions.eq("status", CloudAppStatus.published)));
     }
 
-    public List<CloudAppVersion> findPublishedVersions(String name) {
+    public List<CloudAppVersion> findPublishedVersions(String appUuid) {
         return list(criteria().add(
                 Restrictions.and(
-                        Restrictions.eq("app", name),
-                        Restrictions.or(
-                                Restrictions.eq("status", CloudAppStatus.hidden),
-                                Restrictions.eq("status", CloudAppStatus.published)))));
+                        Restrictions.eq("app", appUuid),
+                        Restrictions.eq("status", CloudAppStatus.published))));
     }
 
-    public CloudAppVersion findLatestPublishedVersion(String name) {
+    public CloudAppVersion findLatestPublishedVersion(String appUuid) {
         final SortedSet<CloudAppVersion> sorted = new TreeSet<>(CloudAppVersion.LATEST_VERSION_FIRST);
-        sorted.addAll(findPublishedVersions(name));
+        sorted.addAll(findPublishedVersions(appUuid));
         return empty(sorted) ? null : sorted.first();
     }
 
