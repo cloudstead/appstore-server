@@ -86,7 +86,7 @@ public class PublishedAppDAO {
             try {
                 sortedApps.add(buildPublishedApp(appVersion));
             } catch (Exception e) {
-                log.warn("Error processing app ("+appVersion+"): "+e, e);
+                log.warn("Error processing appVersion: "+e);
             }
         }
         return new ArrayList<>(sortedApps);
@@ -112,14 +112,14 @@ public class PublishedAppDAO {
         final AppManifest manifest = AppManifest.load(appLayout.getVersionDir());
 
         final PublishedApp app = new PublishedApp()
-                .setAppName(appUuid)
+                .setAppName(cloudApp.getName())
                 .setVersion(version)
                 .setAuthor(author.getName())
                 .setPublisher(publisher.getName())
                 .setApprovedBy(appVersion.getApprovedBy())
                 .setData(manifest.getAssets())
                 .setInteractive(manifest.isInteractive())
-                .setBundleUrl(configuration.getPublicBundleUrl(appUuid, version))
+                .setBundleUrl(configuration.getPublicBundleUrl(cloudApp.getName(), version))
                 .setBundleUrlSha(appVersion.getBundleSha())
                 .setStatus(appVersion.getStatus())
                 .setVisibility(cloudApp.getVisibility());

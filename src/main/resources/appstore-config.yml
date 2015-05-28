@@ -1,6 +1,6 @@
 serverName: cloudos-appstore
 
-publicUriBase: {{APPSTORE_PUBLIC_URI_BASE}}
+publicUriBase: {{APPSTORE_PUBLIC_BASE_URI}}
 
 bcryptRounds: 8
 springContextPath: classpath:/spring.xml
