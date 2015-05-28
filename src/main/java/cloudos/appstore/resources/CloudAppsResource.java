@@ -150,6 +150,8 @@ public class CloudAppsResource {
                 log.error(msg);
                 return Response.serverError().build();
             }
+
+            finalAppLayout.writeManifest(manifest);
             if (manifest.hasAssets()) {
                 final AppLayout bundleLayout = new AppLayout(manifest.getScrubbedName(), bundle.getBundleDir());
                 if (!bundleLayout.copyAssets(finalAppLayout)) {

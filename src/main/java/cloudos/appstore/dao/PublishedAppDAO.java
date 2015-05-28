@@ -94,11 +94,11 @@ public class PublishedAppDAO {
 
     private PublishedApp buildPublishedApp(CloudAppVersion appVersion) {
 
-        final String appName = appVersion.getApp();
+        final String appUuid = appVersion.getApp();
         final String version = appVersion.getVersion();
 
-        final CloudApp cloudApp = appDAO.findByUuid(appVersion.getApp());
-        if (cloudApp == null) die("buildPublishedApp: app not found: "+ appName);
+        final CloudApp cloudApp = appDAO.findByUuid(appUuid);
+        if (cloudApp == null) die("buildPublishedApp: app not found: "+ appUuid);
 
         final AppStoreAccount author = accountDAO.findByUuid(cloudApp.getAuthor());
         if (author == null) die("buildPublishedApp: account not found: "+cloudApp.getAuthor());
@@ -106,20 +106,20 @@ public class PublishedAppDAO {
         final AppStorePublisher publisher = publisherDAO.findByUuid(cloudApp.getPublisher());
         if (publisher == null) die("buildPublishedApp: publisher not found: "+cloudApp.getPublisher());
 
-        final File appRepository = configuration.getAppStore().getAppRepository();
-        final AppLayout appLayout = new AppLayout(appRepository, appName, version);
+        final File appRepository = configuration.getAppRepository(publisher.getName());
+        final AppLayout appLayout = new AppLayout(appRepository, cloudApp.getName(), version);
 
         final AppManifest manifest = AppManifest.load(appLayout.getVersionDir());
 
         final PublishedApp app = new PublishedApp()
-                .setAppName(appName)
+                .setAppName(appUuid)
                 .setVersion(version)
                 .setAuthor(author.getName())
                 .setPublisher(publisher.getName())
                 .setApprovedBy(appVersion.getApprovedBy())
                 .setData(manifest.getAssets())
                 .setInteractive(manifest.isInteractive())
-                .setBundleUrl(configuration.getPublicBundleUrl(appName, version))
+                .setBundleUrl(configuration.getPublicBundleUrl(appUuid, version))
                 .setBundleUrlSha(appVersion.getBundleSha())
                 .setStatus(appVersion.getStatus())
                 .setVisibility(cloudApp.getVisibility());
