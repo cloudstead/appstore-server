@@ -1,14 +1,16 @@
 package cloudos.appstore.resources;
 
-import com.sun.jersey.api.core.HttpContext;
-import lombok.extern.slf4j.Slf4j;
 import cloudos.appstore.ApiConstants;
+import cloudos.appstore.dao.AppStorePublisherDAO;
+import cloudos.appstore.dao.AppStorePublisherMemberDAO;
+import cloudos.appstore.dao.CloudAppDAO;
 import cloudos.appstore.model.AppStoreAccount;
 import cloudos.appstore.model.AppStorePublisher;
 import cloudos.appstore.model.AppStorePublisherMember;
 import cloudos.appstore.model.CloudApp;
-import cloudos.appstore.dao.*;
-import org.cobbzilla.wizard.resources.ResourceUtil;
+import com.qmino.miredot.annotations.ReturnType;
+import com.sun.jersey.api.core.HttpContext;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,8 +18,9 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.List;
+
+import static org.cobbzilla.wizard.resources.ResourceUtil.*;
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -31,53 +34,71 @@ public class AppStorePublishersResource {
     @Autowired private CloudAppDAO cloudAppDAO;
     @Autowired private CloudAppsResource appsResource;
 
+    /**
+     * Find publishers that the current account is a member of
+     * @param context used to retrieve the logged-in user session
+     * @return a List of AppStorePublisher objects
+     */
     @GET
+    @ReturnType("java.lang.List<cloudos.appstore.model.AppStorePublisher>")
     public Response findPublishers (@Context HttpContext context) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final AppStoreAccount account = userPrincipal(context);
 
-        final List<AppStorePublisher> publishers = new ArrayList<>();
         final List<AppStorePublisherMember> members = memberDAO.findByAccount(account.getUuid());
-        for (AppStorePublisherMember m : members) {
-            publishers.add(publisherDAO.findByUuid(m.getPublisher()));
-        }
+        final List<AppStorePublisher> publishers = publisherDAO.findByUuids(AppStorePublisherMember.toPublisher(members));
 
-        return Response.ok(publishers).build();
+        return ok(publishers);
     }
 
+    /**
+     * Find a single publisher by name or UUID
+     * @param context used to retrieve the logged-in user session
+     * @param uuid UUID or name of the publisher
+     * @return the AppStorePublisher
+     */
     @GET
     @Path("/{uuid}")
+    @ReturnType("cloudos.appstore.model.AppStorePublisher")
     public Response findPublisher (@Context HttpContext context,
                                    @PathParam("uuid") String uuid) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final AppStoreAccount account = userPrincipal(context);
 
         AppStorePublisher publisher = publisherDAO.findByUuid(uuid);
         if (publisher == null) publisher = publisherDAO.findByName(uuid);
-        if (publisher == null) return ResourceUtil.notFound(uuid);
+        if (publisher == null) return notFound(uuid);
 
-        if (!isMember(account.getUuid(), publisher.getUuid())) return ResourceUtil.notFound(uuid);
+        if (!isMember(account.getUuid(), publisher.getUuid())) return notFound(uuid);
 
-        return Response.ok(publisher).build();
+        return ok(publisher);
     }
 
+    /**
+     * Update a publisher
+     * @param context used to retrieve the logged-in user session
+     * @param uuid UUID or name of the publisher
+     * @param updated The new publisher information
+     * @return The updated AppStorePublisher
+     */
     @POST
     @Path("/{uuid}")
+    @ReturnType("cloudos.appstore.model.AppStorePublisher")
     public Response updatePublisher (@Context HttpContext context,
                                      @PathParam("uuid") String uuid,
                                      AppStorePublisher updated) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final AppStoreAccount account = userPrincipal(context);
 
         final AppStorePublisher publisher = publisherDAO.findByUuid(uuid);
-        if (publisher == null) return ResourceUtil.notFound(uuid);
+        if (publisher == null) return notFound(uuid);
 
         if (!account.isAdmin()) {
-            if (!isActiveMember(account.getUuid(), publisher.getUuid())) return ResourceUtil.notFound(uuid);
+            if (!isActiveMember(account.getUuid(), publisher.getUuid())) return notFound(uuid);
             updated.setOwner(publisher.getOwner());
         }
 
-        return Response.ok(publisher).build();
+        return ok(publisher);
     }
 
     private AppStorePublisherMember getMember(String account, String publisher) {
@@ -97,26 +118,22 @@ public class AppStorePublishersResource {
         return member != null && member.isActive();
     }
 
-    public static boolean isMember(String account, String publisher, AppStorePublisherMemberDAO memberDAO) {
-        return getMember(account, publisher, memberDAO) != null;
-    }
-
-    public static boolean isActiveMember(String account, String publisher, AppStorePublisherMemberDAO memberDAO) {
-        final AppStorePublisherMember member = getMember(account, publisher, memberDAO);
-        return member != null && member.isActive();
-    }
-
+    /**
+     * Delete a publisher, including all apps and members
+     * @param context used to retrieve the logged-in user session
+     * @param uuid the UUID of the publisher to delete (cannot use name here)
+     * @return nothing, just an HTTP status code
+     */
     @DELETE
     @Path("/{uuid}")
+    @ReturnType("java.lang.Void")
     public Response deletePublisher(@Context HttpContext context,
                                     @PathParam("uuid") String uuid) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final AppStoreAccount account = userPrincipal(context);
         final AppStorePublisher publisher = publisherDAO.findByUuid(uuid);
 
-        if (!publisher.getOwner().equals(account.getUuid())) {
-            return ResourceUtil.forbidden();
-        }
+        if (!publisher.getOwner().equals(account.getUuid())) return forbidden();
 
         Response deleteResponse;
         final List<CloudApp> apps = cloudAppDAO.findByPublisher(uuid);
@@ -136,6 +153,6 @@ public class AppStorePublishersResource {
             publisherDAO.delete(uuid);
         }
 
-        return Response.ok().build();
+        return ok();
     }
 }

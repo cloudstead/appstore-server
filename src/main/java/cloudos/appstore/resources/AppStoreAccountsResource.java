@@ -1,5 +1,6 @@
 package cloudos.appstore.resources;
 
+import com.qmino.miredot.annotations.ReturnType;
 import com.sun.jersey.api.core.HttpContext;
 import lombok.extern.slf4j.Slf4j;
 import cloudos.appstore.ApiConstants;
@@ -20,6 +21,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.List;
 
+import static org.cobbzilla.wizard.resources.ResourceUtil.*;
+
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Path(ApiConstants.ACCOUNTS_ENDPOINT)
@@ -32,35 +35,56 @@ public class AppStoreAccountsResource {
     @Autowired private AppStorePublisherMemberDAO memberDAO;
     @Autowired private AppStorePublishersResource publishersResource;
 
+    /**
+     * View details for the account associated with the session
+     * @param context used to retrieve the logged-in user session
+     * @return the AppStoreAccount for the current session
+     */
     @GET
+    @ReturnType("cloudos.appstore.model.AppStoreAccount")
     public Response findAccount (@Context HttpContext context) {
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
-        return Response.ok(account).build();
+        return ok(userPrincipal(context));
     }
 
+    /**
+     * View details for an account. Must be an admin to view accounts other than your own.
+     * @param context used to retrieve the logged-in user session
+     * @param uuid UUID of the account to find
+     * @return the AppStoreAccount for the current session
+     */
     @GET
     @Path("/{uuid}")
+    @ReturnType("cloudos.appstore.model.AppStoreAccount")
     public Response findAccount (@Context HttpContext context,
                                  @PathParam("uuid") String uuid) {
-        AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        AppStoreAccount account = userPrincipal(context);
+
         if (!account.getUuid().equals(uuid)) {
-            if (!account.isAdmin()) return ResourceUtil.forbidden();
+            if (!account.isAdmin()) return forbidden();
             account = accountDAO.findByUuid(uuid);
             if (account == null) return ResourceUtil.notFound(uuid);
         }
-        return Response.ok(account).build();
+        return ok(account);
     }
 
+    /**
+     * Update an account. Must be admin to update an account other than your own.
+     * @param context used to retrieve the logged-in user session
+     * @param uuid UUID of the account to update
+     * @param updated the updated account
+     * @return the AppStoreAccount for the current session
+     */
     @POST
     @Path("/{uuid}")
     public Response updateAccount (@Context HttpContext context,
                                    @PathParam("uuid") String uuid,
                                    AppStoreAccount updated) {
-        AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        AppStoreAccount account = userPrincipal(context);
+
         if (!account.getUuid().equals(uuid)) {
-            if (!account.isAdmin()) return ResourceUtil.forbidden();
+            if (!account.isAdmin()) return forbidden();
             account = accountDAO.findByUuid(uuid);
-            if (account == null) return ResourceUtil.notFound(uuid);
+            if (account == null) return notFound(uuid);
         }
 
         // non-admins cannot update these fields
@@ -77,29 +101,48 @@ public class AppStoreAccountsResource {
         }
         account.update(updated);
         accountDAO.update(account);
-        return Response.ok(account).build();
+        return ok(account);
     }
 
+    /**
+     * Delete an account. Must be admin to delete an account other than your own.
+     * @param context used to retrieve the logged-in user session
+     * @param uuid UUID of the account to delete
+     * @return nothing, just an HTTP status code
+     */
     @DELETE
-    @Path("/${uuid}")
+    @Path("/{uuid}")
+    @ReturnType("java.lang.Void")
     public Response deleteAccount(@Context HttpContext context,
                                   @PathParam("uuid") String uuid) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
-        if (!account.isAdmin() && !account.getUuid().equals(uuid)) return ResourceUtil.forbidden();
+        AppStoreAccount account = userPrincipal(context);
+
+        if (!account.isAdmin() && !account.getUuid().equals(uuid)) return forbidden();
 
         final AppStoreAccount toDelete = accountDAO.findByUuid(uuid);
 
         Response deleteStatus = deleteAccount(context, toDelete);
         if (deleteStatus != null) return deleteStatus;
 
-        return Response.ok().build();
+        if (uuid.equals(account.getUuid())) {
+            // remove the current API token
+            tokenDAO.cancel(account.getApiToken());
+        }
+
+        return ok();
     }
 
+    /**
+     * Delete the account associated with the current session
+     * @param context used to retrieve the logged-in user session
+     * @return nothing, just an HTTP status code
+     */
     @DELETE
+    @ReturnType("java.lang.Void")
     public Response deleteAccount(@Context HttpContext context) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        AppStoreAccount account = userPrincipal(context);
 
         Response deleteStatus = deleteAccount(context, account);
         if (deleteStatus != null) return deleteStatus;

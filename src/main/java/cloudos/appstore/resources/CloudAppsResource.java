@@ -15,7 +15,6 @@ import org.apache.commons.io.FileUtils;
 import org.cobbzilla.util.io.Tarball;
 import org.cobbzilla.util.security.ShaUtil;
 import org.cobbzilla.wizard.model.SemanticVersion;
-import org.cobbzilla.wizard.resources.ResourceUtil;
 import org.cobbzilla.wizard.validation.ConstraintViolationBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -68,7 +67,7 @@ public class CloudAppsResource {
         // findByPublisher enforces visibility limits on account
         final List<CloudApp> apps = appDAO.findByPublisher(ctx.publisher, ctx.account, ctx.membership);
 
-        return Response.ok(apps).build();
+        return ok(apps);
     }
 
     /**
@@ -94,8 +93,8 @@ public class CloudAppsResource {
             bundle = new AppBundle(request.getBundleUrl(), request.getBundleUrlSha(), configuration.getAppStore().getAssetUrlBase(), violations);
         } catch (Exception e) {
             log.error("defineAppVersion (violations="+violations+"): "+e, e);
-            if (!empty(violations)) return ResourceUtil.invalid(violations);
-            return Response.serverError().build();
+            if (!empty(violations)) return invalid(violations);
+            return serverError();
         }
 
         try {
@@ -137,18 +136,18 @@ public class CloudAppsResource {
             } catch (IOException e) {
                 final String msg = "{err.defineApp.rerollingBundleTarball}";
                 log.error(msg, e);
-                return Response.serverError().build();
+                return serverError();
             }
 
             if (!finalAppLayout.getVersionDir().exists() && !finalAppLayout.getVersionDir().mkdirs()) {
                 final String msg = "{err.defineApp.creatingVersionDir}";
                 log.error(msg + ": " + abs(finalAppLayout.getVersionDir()));
-                return Response.serverError().build();
+                return serverError();
             }
             if (!bundleTarball.renameTo(finalAppLayout.getBundleFile())) {
                 final String msg = "{err.defineApp.renamingBundleTarball}";
                 log.error(msg);
-                return Response.serverError().build();
+                return serverError();
             }
 
             finalAppLayout.writeManifest(manifest);
@@ -157,7 +156,7 @@ public class CloudAppsResource {
                 if (!bundleLayout.copyAssets(finalAppLayout)) {
                     final String msg = "{err.defineApp.copyingAssets}";
                     log.error(msg);
-                    return Response.serverError().build();
+                    return serverError();
                 }
             }
 
@@ -167,7 +166,7 @@ public class CloudAppsResource {
                 // should never happen
                 final String msg = "{err.defineApp.versionExists}";
                 log.error(msg);
-                return ResourceUtil.invalid(msg);
+                return invalid(msg);
             }
             appVersion = new CloudAppVersion()
                     .setApp(ctx.app.getUuid())
@@ -177,7 +176,7 @@ public class CloudAppsResource {
             appVersion = versionDAO.create(appVersion);
 
             appVersion.setApp(ctx.app.getName());
-            return Response.ok(appVersion).build();
+            return ok(appVersion);
 
         } finally {
             bundle.cleanup();
@@ -200,7 +199,7 @@ public class CloudAppsResource {
         final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
         if (ctx.hasResponse()) return ctx.response;
 
-        return Response.ok(ctx.app).build();
+        return ok(ctx.app);
     }
 
     /**
@@ -299,7 +298,7 @@ public class CloudAppsResource {
         final CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), version);
         if (appVersion == null) return notFound(name + "/" + version);
 
-        return Response.ok(appVersion).build();
+        return ok(appVersion);
     }
 
     /**
@@ -336,7 +335,7 @@ public class CloudAppsResource {
                 ctx.app.setVisibility(AppVisibility.valueOf(value));
                 appDAO.update(ctx.app);
                 appListingDAO.flush(ctx.app);
-                return Response.ok(ctx.app).build();
+                return ok(ctx.app);
 
             default:
                 return invalid("err.app.update.attribute.invalid", attribute);
@@ -373,7 +372,7 @@ public class CloudAppsResource {
             switch (status) {
                 case created:
                     log.warn("Cannot move an app back to 'created' status");
-                    return ResourceUtil.invalid("{err.app.version.status.invalid}");
+                    return invalid("{err.app.version.status.invalid}");
 
                 case pending:
                     // they are requesting to publish the app, this is fine
@@ -390,7 +389,7 @@ public class CloudAppsResource {
                         break;
                     }
                     // non-admins are not allowed to publish
-                    return ResourceUtil.forbidden();
+                    return forbidden();
 
                 case retired:
                     // anyone can make an app retired.
@@ -400,14 +399,14 @@ public class CloudAppsResource {
                     break;
 
                 default:
-                    return ResourceUtil.invalid("{err.app.version.status.invalid}");
+                    return invalid("{err.app.version.status.invalid}");
             }
 
         } finally {
             if (shouldRefreshApps) appListingDAO.flush(ctx.app);
         }
 
-        return Response.ok(appVersion).build();
+        return ok(appVersion);
     }
 
     /**
@@ -442,7 +441,7 @@ public class CloudAppsResource {
         versionDAO.delete(appVersion.getUuid());
         appListingDAO.flush(ctx.app);
 
-        return Response.ok().build();
+        return ok();
     }
 
     /**
@@ -473,7 +472,7 @@ public class CloudAppsResource {
         appDAO.delete(ctx.app.getUuid());
         appListingDAO.flush(ctx.app);
 
-        return Response.ok().build();
+        return ok();
     }
 
     @GET
@@ -486,7 +485,7 @@ public class CloudAppsResource {
         if (ctx.hasResponse()) return ctx.response;
 
         final AppFootprint footprint = footprintDAO.findByApp(ctx.app.getUuid());
-        return Response.ok(footprint).build();
+        return ok(footprint);
     }
 
     @POST
@@ -504,7 +503,7 @@ public class CloudAppsResource {
             return Response.ok(footprintDAO.create(footprint)).build();
         } else {
             footprint.setUuid(existing.getUuid());
-            return Response.ok(footprintDAO.update(footprint)).build();
+            return ok(footprintDAO.update(footprint));
         }
     }
 
@@ -518,7 +517,7 @@ public class CloudAppsResource {
         if (ctx.hasResponse()) return ctx.response;
 
         final List<AppPrice> prices = priceDAO.findByApp(ctx.app.getUuid());
-        return Response.ok(prices).build();
+        return ok(prices);
     }
 
     @POST
@@ -533,10 +532,10 @@ public class CloudAppsResource {
 
         final AppPrice existing = priceDAO.findByAppAndCurrency(ctx.app.getUuid(), price.getIsoCurrency());
         if (existing == null) {
-            return Response.ok(priceDAO.create(price)).build();
+            return ok(priceDAO.create(price));
         } else {
             price.setUuid(existing.getUuid());
-            return Response.ok(priceDAO.update(price)).build();
+            return ok(priceDAO.update(price));
         }
     }
 

@@ -9,6 +9,7 @@ import cloudos.appstore.model.AppStorePublisher;
 import cloudos.appstore.model.AppStorePublisherMember;
 import cloudos.appstore.model.AppStorePublisherMemberInvitation;
 import cloudos.appstore.server.AppStoreApiConfiguration;
+import com.qmino.miredot.annotations.ReturnType;
 import com.sun.jersey.api.core.HttpContext;
 import lombok.extern.slf4j.Slf4j;
 import org.cobbzilla.mail.SimpleEmailMessage;
@@ -22,6 +23,8 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+
+import static org.cobbzilla.wizard.resources.ResourceUtil.*;
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -37,67 +40,101 @@ public class AppStorePublisherMembersResource {
 
     public static final String T_INVITE_TO_PUBLISHER = "invite_to_publisher";
 
+    /**
+     * Get memberships for the account associated with the current session
+     * @param context used to retrieve the logged-in user session
+     * @return a List of AppStorePublisherMember objects
+     */
     @GET
+    @ReturnType("java.lang.List<cloudos.appstore.model.AppStorePublisherMember>")
     public Response currentMemberships (@Context HttpContext context) {
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
-        return Response.ok(memberDAO.findByAccount(account.getUuid())).build();
+        final AppStoreAccount account = userPrincipal(context);
+        return ok(memberDAO.findByAccount(account.getUuid()));
     }
 
+    /**
+     * Find memberships for the given account. Must be admin to lookup memberships for accounts other than your own
+     * @param context used to retrieve the logged-in user session
+     * @param uuid UUID of the account
+     * @return a List of AppStorePublisherMember objects
+     */
     @GET
     @Path("/account/{uuid}")
+    @ReturnType("java.lang.List<cloudos.appstore.model.AppStorePublisherMember>")
     public Response findByAccount (@Context HttpContext context,
                                    @PathParam("uuid") String uuid) {
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
-        if (!account.isAdmin() && !account.getUuid().equals(uuid)) return ResourceUtil.forbidden();
+        final AppStoreAccount account = userPrincipal(context);
+        if (!account.isAdmin() && !account.getUuid().equals(uuid)) return forbidden();
 
-        return Response.ok(memberDAO.findByAccount(account.getUuid())).build();
+        return ok(memberDAO.findByAccount(account.getUuid()));
     }
 
+    /**
+     * Find memberships for the given publisher. Must be admin to lookup memberships for publishers that you do not own.
+     * @param context used to retrieve the logged-in user session
+     * @param uuid UUID of the publisher
+     * @return a List of AppStorePublisherMember objects
+     */
     @GET
     @Path("/publisher/{uuid}")
+    @ReturnType("java.lang.List<cloudos.appstore.model.AppStorePublisherMember>")
     public Response findByPublisher (@Context HttpContext context,
                                      @PathParam("uuid") String uuid) {
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final AppStoreAccount account = userPrincipal(context);
         final AppStorePublisher publisher = publisherDAO.findByUuid(uuid);
-        if (publisher == null) return ResourceUtil.forbidden();
+        if (publisher == null) return forbidden();
         if (account.isAdmin() || publisher.getOwner().equals(account.getUuid())) {
-            return Response.ok(memberDAO.findByPublisher(publisher.getUuid())).build();
+            return ok(memberDAO.findByPublisher(publisher.getUuid()));
         }
-        return ResourceUtil.forbidden();
+        return forbidden();
     }
 
+    /**
+     * Find an individual membership record
+     * @param context used to retrieve the logged-in user session
+     * @param uuid UUID of the membership record
+     * @return a AppStorePublisherMember object
+     */
     @GET
     @Path("/member/{uuid}")
+    @ReturnType("cloudos.appstore.model.AppStorePublisherMember")
     public Response findMembershipRecord (@Context HttpContext context,
                                           @PathParam("uuid") String uuid) {
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final AppStoreAccount account = userPrincipal(context);
 
         AppStorePublisherMember member = memberDAO.findByUuid(uuid);
-        if (member == null) return ResourceUtil.notFound(uuid);
+        if (member == null) return notFound(uuid);
 
         if (!account.isAdmin()) {
-            if (!member.getAccount().equals(account.getUuid())) return ResourceUtil.forbidden();
+            if (!member.getAccount().equals(account.getUuid())) return forbidden();
             final AppStorePublisher publisher = publisherDAO.findByUuid(member.getPublisher());
-            if (!publisher.getOwner().equals(account.getUuid())) return ResourceUtil.forbidden();
+            if (!publisher.getOwner().equals(account.getUuid())) return forbidden();
         }
-        return Response.ok(member).build();
+        return ok(member);
     }
 
+    /**
+     * Invite an account to join a publisher as a member
+     * @param context used to retrieve the logged-in user session
+     * @param invitation the invitation information
+     * @return the new membership record (it must be accepted in order to be activated)
+     */
     @PUT
     @Path("/invite")
+    @ReturnType("cloudos.appstore.model.AppStorePublisherMember")
     public Response inviteMember (@Context HttpContext context,
                                   AppStorePublisherMemberInvitation invitation) {
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final AppStoreAccount account = userPrincipal(context);
 
         final AppStorePublisher publisher = publisherDAO.findByUuid(invitation.getPublisherUuid());
-        if (publisher == null) return ResourceUtil.notFound(invitation.getPublisherUuid());
+        if (publisher == null) return notFound(invitation.getPublisherUuid());
 
         final AppStoreAccount invitee = accountDAO.findByName(invitation.getAccountName());
-        if (invitee == null) return ResourceUtil.notFound(invitation.getAccountName());
+        if (invitee == null) return notFound(invitation.getAccountName());
 
         if (!account.isAdmin() && !publisher.getOwner().equals(account.getUuid())) {
             // only owner can invite new members
-            return ResourceUtil.forbidden();
+            return forbidden();
         }
 
         AppStorePublisherMember member = memberDAO.findByAccountAndPublisher(invitee.getUuid(), publisher.getUuid());
@@ -118,7 +155,7 @@ public class AppStorePublisherMembersResource {
 
         sendInvitation(member, account, invitee, publisher);
 
-        return Response.ok(member).build();
+        return ok(member);
     }
 
     public void sendInvitation(AppStorePublisherMember member,
@@ -146,18 +183,25 @@ public class AppStorePublisherMembersResource {
         }
     }
 
+    /**
+     * Activate a membership using the code provided in the invitation
+     * @param context used to retrieve the logged-in user session
+     * @param code the activation code
+     * @return nothing, just an HTTP status code
+     */
     @GET
     @Path("/activate/{code}")
+    @ReturnType("java.lang.Void")
     public Response activateMembership(@Context HttpContext context,
                                        @PathParam("code") String code) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final AppStoreAccount account = userPrincipal(context);
 
         final AppStorePublisherMember member = memberDAO.findByActivationCode(code);
-        if (member == null) return ResourceUtil.notFound(code);
+        if (member == null) return notFound(code);
 
         // Can only accept invites for yourself
-        if (!member.getAccount().equals(account.getUuid())) return ResourceUtil.forbidden();
+        if (!member.getAccount().equals(account.getUuid())) return forbidden();
 
         member.setActive(true);
         member.setActivation(null);
@@ -165,22 +209,29 @@ public class AppStorePublisherMembersResource {
 
         // todo: change invitationActivationUri to point to an ember app that will call the API,
         // instead of a link to this API call directly, which will require login anyway.
-        return Response.ok().build();
+        return ok();
     }
 
+    /**
+     * Delete a membership
+     * @param context used to retrieve the logged-in user session
+     * @param uuid UUID of the membership record
+     * @return
+     */
     @DELETE
     @Path("/member/{uuid}")
+    @ReturnType("java.lang.Void")
     public Response deleteMembershipRecord (@Context HttpContext context,
                                             @PathParam("uuid") String uuid) {
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final AppStoreAccount account = userPrincipal(context);
 
         AppStorePublisherMember member = memberDAO.findByUuid(uuid);
-        if (member == null) return ResourceUtil.notFound(uuid);
+        if (member == null) return notFound(uuid);
 
         if (!account.isAdmin()) {
-            if (!member.getAccount().equals(account.getUuid())) return ResourceUtil.forbidden();
+            if (!member.getAccount().equals(account.getUuid())) return forbidden();
             final AppStorePublisher publisher = publisherDAO.findByUuid(member.getPublisher());
-            if (!publisher.getOwner().equals(account.getUuid())) return ResourceUtil.forbidden();
+            if (!publisher.getOwner().equals(account.getUuid())) return forbidden();
         }
 
         memberDAO.delete(member.getUuid());

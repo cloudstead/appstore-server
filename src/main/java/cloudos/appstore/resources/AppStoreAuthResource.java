@@ -12,6 +12,7 @@ import cloudos.appstore.model.AppStorePublisherMember;
 import cloudos.appstore.model.support.ApiToken;
 import cloudos.appstore.model.support.AppStoreAccountRegistration;
 import cloudos.appstore.model.support.RefreshTokenRequest;
+import com.qmino.miredot.annotations.ReturnType;
 import lombok.extern.slf4j.Slf4j;
 import org.cobbzilla.wizard.model.HashedPassword;
 import org.cobbzilla.wizard.resources.ResourceUtil;
@@ -25,6 +26,10 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.cobbzilla.wizard.resources.ResourceUtil.forbidden;
+import static org.cobbzilla.wizard.resources.ResourceUtil.notFound;
+import static org.cobbzilla.wizard.resources.ResourceUtil.ok;
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -43,7 +48,13 @@ public class AppStoreAuthResource {
      */
     @GET public ApiToken check() { return new ApiToken(); }
 
+    /**
+     * Register a new account
+     * @param registration The registration information
+     * @return an token that can be used for future API calls
+     */
     @PUT
+    @ReturnType("cloudos.appstore.model.support.ApiToken")
     public Response register (@Valid AppStoreAccountRegistration registration) {
 
         final String email = registration.getEmail();
@@ -79,16 +90,22 @@ public class AppStoreAuthResource {
 
         final ApiToken token = tokenDAO.generateNewToken(uuid);
 
-        return Response.ok(token).build();
+        return ok(token);
     }
 
+    /**
+     * Get a new API token
+     * @param tokenRequest Should either contain a login/pass, or an existing token
+     * @return a new API token
+     */
     @POST
+    @ReturnType("cloudos.appstore.model.support.ApiToken")
     public Response refreshToken (RefreshTokenRequest tokenRequest) {
 
         // if we have a token, try to refresh it directly
         if (tokenRequest.hasToken()) {
             final ApiToken newToken = tokenDAO.refreshToken(tokenRequest.getApiToken());
-            if (newToken != null) Response.ok(newToken).build();
+            if (newToken != null) return ok(newToken);
         }
 
         // if that didn't work, or we didn't have a token, try email/password auth
@@ -98,22 +115,28 @@ public class AppStoreAuthResource {
             if (found == null) found = accountDAO.findByName(tokenRequest.getEmail());
 
             if (found == null || !found.getHashedPassword().isCorrectPassword(tokenRequest.getPassword())) {
-                return ResourceUtil.notFound();
+                return notFound();
             }
 
             final ApiToken newToken = tokenDAO.generateNewToken(found.getUuid());
-            return Response.ok(newToken).build();
+            return ok(newToken);
         }
 
         // not enough to work with
-        return ResourceUtil.forbidden();
+        return forbidden();
     }
 
+    /**
+     * Cancel an API token
+     * @param token the API token to cancel
+     * @return nothing, just an HTTP status code
+     */
     @DELETE
     @Path("/{token}")
+    @ReturnType("java.lang.Void")
     public Response deleteToken (@PathParam("token") String token) {
         tokenDAO.cancel(token);
-        return Response.ok().build();
+        return ok();
     }
 
 }

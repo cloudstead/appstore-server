@@ -1,9 +1,9 @@
 package cloudos.appstore.resources;
 
 import cloudos.appstore.ApiConstants;
+import cloudos.appstore.dao.AppListingDAO;
 import cloudos.appstore.dao.AppStorePublisherDAO;
 import cloudos.appstore.dao.AppStorePublisherMemberDAO;
-import cloudos.appstore.dao.AppListingDAO;
 import cloudos.appstore.model.AppStoreAccount;
 import cloudos.appstore.model.AppStorePublisher;
 import cloudos.appstore.model.AppStorePublisherMember;
@@ -13,7 +13,6 @@ import com.qmino.miredot.annotations.ReturnType;
 import com.sun.jersey.api.core.HttpContext;
 import lombok.extern.slf4j.Slf4j;
 import org.cobbzilla.wizard.dao.SearchResults;
-import org.cobbzilla.wizard.resources.ResourceUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,8 +22,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.List;
 
-import static org.cobbzilla.wizard.resources.ResourceUtil.notFound;
-import static org.cobbzilla.wizard.resources.ResourceUtil.userPrincipal;
+import static org.cobbzilla.wizard.resources.ResourceUtil.*;
 
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
@@ -47,7 +45,7 @@ public class AppStoreResource {
     public Response findApps (@Context HttpContext context,
                               AppStoreQuery query) {
 
-        final AppStoreAccount account = userPrincipal(context);
+        final AppStoreAccount account = optionalUserPrincipal(context);
         List<AppStorePublisherMember> memberships = null;
         if (account != null) {
             memberships = memberDAO.findByAccount(account.getUuid());
@@ -55,7 +53,8 @@ public class AppStoreResource {
 
         query = (query == null) ? new AppStoreQuery() : query;
         final SearchResults<AppListing> apps = appListingDAO.search(account, memberships, query);
-        return Response.ok(apps).build();
+
+        return ok(apps);
     }
 
     /**
@@ -72,7 +71,7 @@ public class AppStoreResource {
                              @PathParam("publisher") String publisher,
                              @PathParam("name") String name) {
 
-        final AppStoreAccount account = ResourceUtil.userPrincipal(context);
+        final AppStoreAccount account = optionalUserPrincipal(context);
         List<AppStorePublisherMember> memberships = null;
         if (account != null) {
             memberships = memberDAO.findByAccount(account.getUuid());
@@ -82,7 +81,7 @@ public class AppStoreResource {
         final AppListing app = appListingDAO.findAppListing(appPublisher, name, account, memberships);
         if (app == null) return notFound();
 
-        return Response.ok(app).build();
+        return ok(app);
     }
 
     /**
@@ -100,7 +99,7 @@ public class AppStoreResource {
                              @PathParam("name") String name,
                              @PathParam("version") String version) {
 
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
+        final AppStoreAccount account = optionalUserPrincipal(context);
         List<AppStorePublisherMember> memberships = null;
         if (account != null) {
             memberships = memberDAO.findByAccount(account.getUuid());
@@ -110,7 +109,7 @@ public class AppStoreResource {
         final AppListing app = appListingDAO.findAppListing(appPublisher, name, version, account, memberships);
         if (app == null) return notFound();
 
-        return Response.ok(app).build();
+        return ok(app);
     }
 
 }

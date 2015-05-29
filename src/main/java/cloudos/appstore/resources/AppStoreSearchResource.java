@@ -4,6 +4,7 @@ import cloudos.appstore.ApiConstants;
 import cloudos.appstore.dao.*;
 import cloudos.appstore.model.AppStoreAccount;
 import cloudos.appstore.model.support.AppStoreQuery;
+import com.qmino.miredot.annotations.ReturnType;
 import com.sun.jersey.api.core.HttpContext;
 import lombok.extern.slf4j.Slf4j;
 import org.cobbzilla.wizard.dao.SearchResults;
@@ -19,6 +20,10 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import static org.cobbzilla.wizard.resources.ResourceUtil.forbidden;
+import static org.cobbzilla.wizard.resources.ResourceUtil.ok;
+import static org.cobbzilla.wizard.resources.ResourceUtil.userPrincipal;
+
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Path(ApiConstants.SEARCH_ENDPOINT)
@@ -31,13 +36,20 @@ public class AppStoreSearchResource {
     @Autowired private CloudAppDAO appDAO;
     @Autowired private CloudAppVersionDAO versionDAO;
 
+    /**
+     * Admins only. Search just about any appstore object
+     * @param context used to retrieve the logged-in user session
+     * @param query the query
+     * @return a List whose element type depends on the type of query
+     */
     @POST
+    @ReturnType("java.util.List")
     public Response search (@Context HttpContext context,
                             AppStoreQuery query) {
 
         // sanity check -- must be admin
-        final AppStoreAccount account = (AppStoreAccount) context.getRequest().getUserPrincipal();
-        if (!account.isAdmin()) return ResourceUtil.forbidden();
+        final AppStoreAccount account = userPrincipal(context);
+        if (!account.isAdmin()) return forbidden();
 
         final SearchResults results;
         switch (query.getType()) {
@@ -60,7 +72,7 @@ public class AppStoreSearchResource {
                 return ResourceUtil.invalid("err.type.invalid");
         }
 
-        return Response.ok(results).build();
+        return ok(results);
     }
 
 }
