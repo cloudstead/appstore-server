@@ -5,10 +5,25 @@ import org.cobbzilla.wizard.dao.AbstractCRUDDAO;
 import org.hibernate.criterion.Restrictions;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 @Repository
 public class CloudAppDAO extends AbstractCRUDDAO<CloudApp> {
+
+    public List<CloudApp> findVisibleToEveryone() { return findByField("visibility", AppVisibility.everyone); }
+
+    public List<CloudApp> findVisibleToMember(Collection<AppStorePublisherMember> memberships) {
+        return list(criteria().add(Restrictions.and(
+                Restrictions.eq("visibility", AppVisibility.members),
+                Restrictions.in("publisher", AppStorePublisherMember.toPublisher(memberships)))));
+    }
+
+    public List<CloudApp> findVisibleToPublisher(Collection<AppStorePublisher> publishers) {
+        return list(criteria().add(Restrictions.and(
+                Restrictions.eq("visibility", AppVisibility.publisher),
+                Restrictions.in("publisher", toUuid(publishers)))));
+    }
 
     public List<CloudApp> findByPublisher(String publisher) {
         return list(criteria().add(Restrictions.eq("publisher", publisher)));
@@ -48,4 +63,5 @@ public class CloudAppDAO extends AbstractCRUDDAO<CloudApp> {
                 Restrictions.eq("visibility", AppVisibility.everyone),
                 Restrictions.eq("publisher", publisher))));
     }
+
 }

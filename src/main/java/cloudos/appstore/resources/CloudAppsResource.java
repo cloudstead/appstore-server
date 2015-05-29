@@ -44,7 +44,7 @@ public class CloudAppsResource {
     @Autowired private AppStoreApiConfiguration configuration;
     @Autowired private CloudAppDAO appDAO;
     @Autowired private CloudAppVersionDAO versionDAO;
-    @Autowired private PublishedAppDAO publishedAppDAO;
+    @Autowired private AppListingDAO appListingDAO;
     @Autowired private AppStorePublisherDAO publisherDAO;
     @Autowired private AppStorePublisherMemberDAO memberDAO;
     @Autowired private AppFootprintDAO footprintDAO;
@@ -172,10 +172,12 @@ public class CloudAppsResource {
             appVersion = new CloudAppVersion()
                     .setApp(ctx.app.getUuid())
                     .setVersion(manifest.getVersion())
+                    .setAuthor(ctx.account.getUuid())
                     .setBundleSha(ShaUtil.sha256_file(finalAppLayout.getBundleFile()));
             appVersion = versionDAO.create(appVersion);
 
-            return Response.ok(appVersion.setApp(ctx.app.getName())).build();
+            appVersion.setApp(ctx.app.getName());
+            return Response.ok(appVersion).build();
 
         } finally {
             bundle.cleanup();
@@ -333,7 +335,7 @@ public class CloudAppsResource {
             case "visibility":
                 ctx.app.setVisibility(AppVisibility.valueOf(value));
                 appDAO.update(ctx.app);
-                publishedAppDAO.refresh(ctx.app);
+                appListingDAO.flush(ctx.app);
                 return Response.ok(ctx.app).build();
 
             default:
@@ -402,7 +404,7 @@ public class CloudAppsResource {
             }
 
         } finally {
-            if (shouldRefreshApps) publishedAppDAO.flushApps();
+            if (shouldRefreshApps) appListingDAO.flush(ctx.app);
         }
 
         return Response.ok(appVersion).build();
@@ -438,6 +440,7 @@ public class CloudAppsResource {
         }
 
         versionDAO.delete(appVersion.getUuid());
+        appListingDAO.flush(ctx.app);
 
         return Response.ok().build();
     }
@@ -468,6 +471,7 @@ public class CloudAppsResource {
         final AppLayout appLayout = new AppLayout(appRepository, name);
         FileUtils.deleteQuietly(appLayout.getAppDir());
         appDAO.delete(ctx.app.getUuid());
+        appListingDAO.flush(ctx.app);
 
         return Response.ok().build();
     }

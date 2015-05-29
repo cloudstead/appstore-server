@@ -19,7 +19,7 @@
     <context:component-scan base-package="cloudos.appstore.dao">
         <context:exclude-filter type="regex" expression="cloudos.appstore.dao.PublishedAppDAO" />
     </context:component-scan>
-    <bean class="cloudos.appstore.mock.MockPublishedAppDAO"/>
+    <bean class="cloudos.appstore.mock.MockAppListingDAO"/>
 
     <context:component-scan base-package="cloudos.appstore.auth"/>
     <context:component-scan base-package="cloudos.appstore.resources"/>

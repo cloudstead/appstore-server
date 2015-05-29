@@ -1,13 +1,19 @@
 package cloudos.appstore.resources;
 
 import cloudos.appstore.ApiConstants;
-import cloudos.appstore.dao.*;
-import cloudos.appstore.model.*;
+import cloudos.appstore.dao.AppStorePublisherDAO;
+import cloudos.appstore.dao.AppStorePublisherMemberDAO;
+import cloudos.appstore.dao.AppListingDAO;
+import cloudos.appstore.model.AppStoreAccount;
+import cloudos.appstore.model.AppStorePublisher;
+import cloudos.appstore.model.AppStorePublisherMember;
 import cloudos.appstore.model.support.AppListing;
+import cloudos.appstore.model.support.AppStoreQuery;
+import com.qmino.miredot.annotations.ReturnType;
 import com.sun.jersey.api.core.HttpContext;
 import lombok.extern.slf4j.Slf4j;
 import org.cobbzilla.wizard.dao.SearchResults;
-import org.cobbzilla.wizard.model.ResultPage;
+import org.cobbzilla.wizard.resources.ResourceUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +21,6 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.cobbzilla.wizard.resources.ResourceUtil.notFound;
@@ -27,15 +32,20 @@ import static org.cobbzilla.wizard.resources.ResourceUtil.userPrincipal;
 @Service @Slf4j
 public class AppStoreResource {
 
-    @Autowired private PublishedAppDAO publishedAppDAO;
+    @Autowired private AppListingDAO appListingDAO;
     @Autowired private AppStorePublisherMemberDAO memberDAO;
     @Autowired private AppStorePublisherDAO publisherDAO;
-    @Autowired private AppFootprintDAO footprintDAO;
-    @Autowired private AppPriceDAO priceDAO;
 
+    /**
+     * Search the app store for apps
+     * @param context used to retrieve the logged-in user session. OK if there is no session (allow anonymous)
+     * @param query the query
+     * @return a List of AppListing objects representing the apps found
+     */
     @POST
+    @ReturnType("java.util.List<cloudos.appstore.model.support.AppListing>")
     public Response findApps (@Context HttpContext context,
-                              ResultPage page) {
+                              AppStoreQuery query) {
 
         final AppStoreAccount account = userPrincipal(context);
         List<AppStorePublisherMember> memberships = null;
@@ -43,32 +53,46 @@ public class AppStoreResource {
             memberships = memberDAO.findByAccount(account.getUuid());
         }
 
-        page = (page == null) ? new ResultPage() : page;
-        final SearchResults<PublishedApp> apps = publishedAppDAO.search(account, memberships, page);
-        final List<AppListing> listings = new ArrayList<>(apps.size());
-        for (PublishedApp app : apps.getResults()) {
-            final AppListing listing = getAppListing(app);
-            listings.add(listing);
+        query = (query == null) ? new AppStoreQuery() : query;
+        final SearchResults<AppListing> apps = appListingDAO.search(account, memberships, query);
+        return Response.ok(apps).build();
+    }
+
+    /**
+     * Find details about a particular app
+     * @param context used to retrieve the logged-in user session. OK if there is no session (allow anonymous)
+     * @param publisher the name of the app publisher
+     * @param name the name of the app
+     * @return a single AppListing, will also include the "availableVersions" field
+     */
+    @GET
+    @Path("/{publisher}/{name}")
+    @ReturnType("cloudos.appstore.model.support.AppListing")
+    public Response findApp (@Context HttpContext context,
+                             @PathParam("publisher") String publisher,
+                             @PathParam("name") String name) {
+
+        final AppStoreAccount account = ResourceUtil.userPrincipal(context);
+        List<AppStorePublisherMember> memberships = null;
+        if (account != null) {
+            memberships = memberDAO.findByAccount(account.getUuid());
         }
-        return Response.ok(new SearchResults<>(listings, apps.size())).build();
+        final AppStorePublisher appPublisher = publisherDAO.findByName(publisher);
+
+        final AppListing app = appListingDAO.findAppListing(appPublisher, name, account, memberships);
+        if (app == null) return notFound();
+
+        return Response.ok(app).build();
     }
 
-    private AppListing getAppListing(PublishedApp app) {
-
-        final String appName = app.getAppName();
-
-        // todo: use promises to parallelize these lookups
-        final AppStorePublisher publisher = publisherDAO.findByUuid(app.getPublisher());
-        final List<AppPrice> prices = priceDAO.findByApp(appName);
-        final AppFootprint footprint = footprintDAO.findByApp(appName);
-
-        return new AppListing()
-                .setApp(app)
-                .setPublisher(publisher)
-                .setFootprint(footprint)
-                .setPrices(prices);
-    }
-
+    /**
+     * Find details about a particular app version
+     * @param context used to retrieve the logged-in user session. OK if there is no session (allow anonymous)
+     * @param publisher the name of the app publisher
+     * @param name the name of the app
+     * @param version the version of the app
+     * @return a single AppListing, will also include the "availableVersions" field
+     */
     @GET
     @Path("/{publisher}/{name}/{version}")
     public Response findApp (@Context HttpContext context,
@@ -83,12 +107,10 @@ public class AppStoreResource {
         }
         final AppStorePublisher appPublisher = publisherDAO.findByName(publisher);
 
-        final PublishedApp app = publishedAppDAO.findByNameAndVersion(account, appPublisher, memberships, name, version);
+        final AppListing app = appListingDAO.findAppListing(appPublisher, name, version, account, memberships);
         if (app == null) return notFound();
 
-        final AppListing appListing = getAppListing(app);
-
-        return Response.ok(appListing).build();
+        return Response.ok(app).build();
     }
 
 }

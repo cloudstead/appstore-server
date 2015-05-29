@@ -47,7 +47,7 @@ public class AppStoreCrudIT extends AppStoreITBase {
 
         apiDocs.addNote("define a cloud app");
         CloudAppVersion appVersion = AppStoreTestUtil.newCloudApp(appStoreClient, pubName, testApp.getBundleUrl(), testApp.getBundleUrlSha());
-        assertEquals(testApp.getNameAndVersion(), appVersion.toString());
+        assertEquals(testApp.getNameAndVersion(), appVersion.getApp()+"/"+appVersion.getVersion());
 
         apiDocs.addNote("lookup the app we just defined");
         final String appName = testApp.getManifest().getName();

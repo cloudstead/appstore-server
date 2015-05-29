@@ -27,11 +27,9 @@ public class AppStoreSearchResource {
 
     @Autowired private AppStoreAccountDAO accountDAO;
     @Autowired private AppStorePublisherDAO publisherDAO;
-    @Autowired private AppStorePublisherMemberDAO memberDAO;
     @Autowired private CloudAccountDAO cloudAccountDAO;
     @Autowired private CloudAppDAO appDAO;
     @Autowired private CloudAppVersionDAO versionDAO;
-    @Autowired private PublishedAppDAO publishedAppDAO;
 
     @POST
     public Response search (@Context HttpContext context,
@@ -57,9 +55,6 @@ public class AppStoreSearchResource {
                 break;
             case version:
                 results = versionDAO.search(query);
-                break;
-            case published:
-                results = publishedAppDAO.search(account, null, query);
                 break;
             default:
                 return ResourceUtil.invalid("err.type.invalid");
