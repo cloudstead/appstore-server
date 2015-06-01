@@ -90,7 +90,8 @@ public class CloudAppsResource {
         final List<ConstraintViolationBean> violations = new ArrayList<>();
         final AppBundle bundle;
         try {
-            bundle = new AppBundle(request.getBundleUrl(), request.getBundleUrlSha(), configuration.getAppStore().getAssetUrlBase(), violations);
+            bundle = new AppBundle(request.getBundleUrl(), request.getBundleUrlSha(),
+                                   configuration.getAssetUriBase(), violations);
         } catch (Exception e) {
             log.error("defineAppVersion (violations="+violations+"): "+e, e);
             if (!empty(violations)) return invalid(violations);
@@ -124,8 +125,10 @@ public class CloudAppsResource {
                     proposedVersion = SemanticVersion.incrementPatch(proposedVersion);
                 }
             }
-            manifest.setSemanticVersion(proposedVersion);
-            bundle.writeManifest();
+            if (!manifest.getSemanticVersion().equals(proposedVersion)) {
+                manifest.setSemanticVersion(proposedVersion);
+                bundle.writeManifest();
+            }
 
             // re-roll the tarball
             final AppLayout finalAppLayout = new AppLayout(appRepository, manifest);
@@ -198,7 +201,7 @@ public class CloudAppsResource {
                                @PathParam("name") String name) {
         final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
         if (ctx.hasResponse()) return ctx.response;
-
+        ctx.app.setVersions(versionDAO.findByApp(ctx.app.getUuid()));
         return ok(ctx.app);
     }
 

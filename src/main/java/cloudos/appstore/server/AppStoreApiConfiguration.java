@@ -52,4 +52,6 @@ public class AppStoreApiConfiguration extends RestServerConfiguration
         return mkdirOrDie(new File(getAppStore().getAppRepository(), publisherName));
     }
 
+    public String getAssetUriBase() { return getPublicUriBase() + getAppStore().getAssetUrlBase(); }
+
 }
