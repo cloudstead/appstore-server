@@ -132,7 +132,7 @@ public class AppListingDAO {
         final AppManifest manifest = getManifest(publisher, app, version);
 
         final AppListing listing = new AppListing()
-                .setBundleUrl(configuration.getPublicBundleUrl(app.getName(), version))
+                .setBundleUrl(configuration.getPublicBundleUrl(publisher.getName(), app.getName(), version))
                 .setFootprint(footprintDAO.findByApp(app.getUuid()))
                 .setPrices(priceDAO.findByApp(app.getUuid()));
 

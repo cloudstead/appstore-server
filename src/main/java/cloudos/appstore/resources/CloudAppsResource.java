@@ -5,11 +5,13 @@ import cloudos.appstore.dao.*;
 import cloudos.appstore.model.*;
 import cloudos.appstore.model.app.AppLayout;
 import cloudos.appstore.model.app.AppManifest;
+import cloudos.appstore.model.support.AppAssetUrlGenerator;
 import cloudos.appstore.model.support.AppBundle;
 import cloudos.appstore.model.support.DefineCloudAppRequest;
 import cloudos.appstore.server.AppStoreApiConfiguration;
 import com.qmino.miredot.annotations.ReturnType;
 import com.sun.jersey.api.core.HttpContext;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.cobbzilla.util.io.Tarball;
@@ -29,7 +31,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.cobbzilla.util.daemon.ZillaRuntime.die;
 import static org.cobbzilla.util.daemon.ZillaRuntime.empty;
 import static org.cobbzilla.util.io.FileUtil.abs;
 import static org.cobbzilla.wizard.resources.ResourceUtil.*;
@@ -61,7 +62,7 @@ public class CloudAppsResource {
     public Response findApps (@Context HttpContext context,
                               @PathParam("publisher") String publisher) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, null, true);
+        final CloudAppContext ctx = appContext(context, publisher, null, true);
         if (ctx.hasResponse()) return ctx.response;
 
         // findByPublisher enforces visibility limits on account
@@ -84,14 +85,16 @@ public class CloudAppsResource {
                                      @PathParam("publisher") String publisher,
                                      @Valid DefineCloudAppRequest request) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, null);
+        final CloudAppContext ctx = appContext(context, publisher, null);
         if (ctx.hasResponse()) return ctx.response;
+
+        // todo: cache in an LRU cache, AppAssetUrlGenerators are immutable and can be reused
+        final AppAssetUrlGenerator baseUrlGen = new AppStoreAssetUrlGenerator(publisher);
 
         final List<ConstraintViolationBean> violations = new ArrayList<>();
         final AppBundle bundle;
         try {
-            bundle = new AppBundle(request.getBundleUrl(), request.getBundleUrlSha(),
-                                   configuration.getAssetUriBase(), violations);
+            bundle = new AppBundle(request.getBundleUrl(), request.getBundleUrlSha(), baseUrlGen, violations);
         } catch (Exception e) {
             log.error("defineAppVersion (violations="+violations+"): "+e, e);
             if (!empty(violations)) return invalid(violations);
@@ -199,7 +202,7 @@ public class CloudAppsResource {
     public Response getApp(@Context HttpContext context,
                                @PathParam("publisher") String publisher,
                                @PathParam("name") String name) {
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        final CloudAppContext ctx = appContext(context, publisher, name, true);
         if (ctx.hasResponse()) return ctx.response;
         ctx.app.setVersions(versionDAO.findByApp(ctx.app.getUuid()));
         return ok(ctx.app);
@@ -221,7 +224,7 @@ public class CloudAppsResource {
                              @PathParam("name") String name,
                              @PathParam("asset") String asset) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        final CloudAppContext ctx = appContext(context, publisher, name, true);
         if (ctx.hasResponse()) return ctx.response;
 
         final CloudAppVersion appVersion = versionDAO.findLatestPublishedVersion(ctx.app.getUuid());
@@ -250,7 +253,7 @@ public class CloudAppsResource {
                              @PathParam("version") String version,
                              @PathParam("asset") String asset) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        final CloudAppContext ctx = appContext(context, publisher, name, true);
         if (ctx.hasResponse()) return ctx.response;
 
         final CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), version);
@@ -270,7 +273,7 @@ public class CloudAppsResource {
         } else {
             for (String assetType : AppMutableData.APP_ASSETS) {
                 if (assetType.startsWith(asset)) {
-                    assetFile = appLayout.findDefaultAsset(assetType);
+                    assetFile = appLayout.findLocalAsset(assetType);
                     if (assetFile == null) return notFound(asset);
                     return streamFile(assetFile);
                 }
@@ -295,7 +298,7 @@ public class CloudAppsResource {
                                @PathParam("name") String name,
                                @PathParam("version") String version) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        final CloudAppContext ctx = appContext(context, publisher, name, true);
         if (ctx.hasResponse()) return ctx.response;
 
         final CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), version);
@@ -328,7 +331,7 @@ public class CloudAppsResource {
                                     @PathParam("attribute") String attribute,
                                     String value) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        final CloudAppContext ctx = appContext(context, publisher, name);
         if (ctx.hasResponse()) return ctx.response;
 
         if (empty(attribute)) return invalid("err.app.update.attribute.empty");
@@ -363,7 +366,7 @@ public class CloudAppsResource {
                                  @PathParam("version") String version,
                                  CloudAppStatus status) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        final CloudAppContext ctx = appContext(context, publisher, name);
         if (ctx.hasResponse()) return ctx.response;
 
         final CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), version);
@@ -428,7 +431,7 @@ public class CloudAppsResource {
                                      @PathParam("name") String name,
                                      @PathParam("version") String version) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        final CloudAppContext ctx = appContext(context, publisher, name);
         if (ctx.hasResponse()) return ctx.response;
 
         final CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), version);
@@ -461,7 +464,7 @@ public class CloudAppsResource {
                               @PathParam("publisher") String publisher,
                               @PathParam("name") String name) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        final CloudAppContext ctx = appContext(context, publisher, name);
         if (ctx.hasResponse()) return ctx.response;
 
         for (CloudAppVersion appVersion : versionDAO.findByApp(ctx.app.getUuid())) {
@@ -484,7 +487,7 @@ public class CloudAppsResource {
                                    @PathParam("publisher") String publisher,
                                    @PathParam("name") String name) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        final CloudAppContext ctx = appContext(context, publisher, name, true);
         if (ctx.hasResponse()) return ctx.response;
 
         final AppFootprint footprint = footprintDAO.findByApp(ctx.app.getUuid());
@@ -498,7 +501,7 @@ public class CloudAppsResource {
                                   @PathParam("name") String name,
                                   AppFootprint footprint) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        final CloudAppContext ctx = appContext(context, publisher, name);
         if (ctx.hasResponse()) return ctx.response;
 
         final AppFootprint existing = footprintDAO.findByApp(ctx.app.getUuid());
@@ -516,7 +519,7 @@ public class CloudAppsResource {
                                @PathParam("publisher") String publisher,
                                @PathParam("name") String name) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name, true);
+        final CloudAppContext ctx = appContext(context, publisher, name, true);
         if (ctx.hasResponse()) return ctx.response;
 
         final List<AppPrice> prices = priceDAO.findByApp(ctx.app.getUuid());
@@ -530,7 +533,7 @@ public class CloudAppsResource {
                               @PathParam("name") String name,
                               AppPrice price) {
 
-        final CloudAppContext ctx = new CloudAppContext(context, publisher, name);
+        final CloudAppContext ctx = appContext(context, publisher, name);
         if (ctx.hasResponse()) return ctx.response;
 
         final AppPrice existing = priceDAO.findByAppAndCurrency(ctx.app.getUuid(), price.getIsoCurrency());
@@ -542,60 +545,20 @@ public class CloudAppsResource {
         }
     }
 
-    private class CloudAppContext {
+    protected CloudAppContext appContext(HttpContext context, String publisher, String name) {
+        return appContext(context, publisher, name, false);
+    }
 
-        public AppStoreAccount account;
-        public AppStorePublisher publisher;
-        public AppStorePublisherMember membership;
-        public CloudApp app;
+    protected CloudAppContext appContext(HttpContext context, String publisher, String name, boolean allowNonmembers) {
+        return new CloudAppContext(publisherDAO, memberDAO, appDAO, context, publisher, name, allowNonmembers);
+    }
 
-        public Response response = null;
-
-        public boolean hasResponse() { return response != null; }
-
-        public CloudAppContext(HttpContext context, String pubName, String appName) {
-            this(context, pubName, appName, false);
-        }
-
-        public CloudAppContext(HttpContext context, String pubName, String appName, boolean allowNonmembers) {
-            account = userPrincipal(context);
-            publisher = publisherDAO.findByName(pubName);
-            if (publisher == null) {
-                response = notFound(pubName);
-                return;
-            }
-
-            membership = memberDAO.findByAccountAndPublisher(account.getUuid(), publisher.getUuid());
-            if (!account.isAdmin() && (membership == null || membership.inactive()) && !allowNonmembers) {
-                response = forbidden();
-                return;
-            }
-
-            if (appName != null) {
-                app = appDAO.findByPublisherAndName(publisher.getUuid(), appName);
-                if (app == null) {
-                    response = notFound(appName);
-                    return;
-                }
-
-                switch (app.getVisibility()) {
-                    case everyone: return;
-
-                    case members:
-                        if (!account.isAdmin() && (membership == null || membership.inactive())) {
-                            response = forbidden();
-                        }
-                        return;
-
-                    case publisher:
-                        if (!account.isAdmin() && !publisher.getOwner().equals(account.getUuid())) {
-                            response = forbidden();
-                        }
-                        return;
-
-                    default: die("invalid visibility: "+app.getVisibility());
-                }
-            }
+    @AllArgsConstructor
+    private class AppStoreAssetUrlGenerator implements AppAssetUrlGenerator {
+        private final String publisher;
+        @Override public String generateBaseUrl(String app, String version) {
+            return configuration.getPublisherAssetBase(publisher) + "/" + app + "/" + version + "/";
         }
     }
+
 }

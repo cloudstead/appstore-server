@@ -5,6 +5,7 @@ import cloudos.appstore.model.support.ApiToken;
 import cloudos.appstore.model.support.AppStoreAccountRegistration;
 import cloudos.appstore.test.AppStoreTestUtil;
 import cloudos.appstore.test.TestApp;
+import lombok.Cleanup;
 import org.cobbzilla.wizard.api.NotFoundException;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -56,7 +57,7 @@ public class AppStoreCrudIT extends AppStoreITBase {
 
         apiDocs.addNote("request the bundle asset for this version");
         apiDocs.setBinaryResponse(".tar.gz tarball");
-        File bundleFile = appStoreClient.getAppBundle(pubName, appName, appVersion.getVersion());
+        @Cleanup("delete") final File bundleFile = appStoreClient.getAppBundle(pubName, appName, appVersion.getVersion());
         assertNotNull(bundleFile);
         assertTrue(bundleFile.length() > 0);
 
@@ -80,8 +81,8 @@ public class AppStoreCrudIT extends AppStoreITBase {
 
         apiDocs.addNote("request the latest bundle asset");
         apiDocs.setBinaryResponse(".tar.gz tarball");
-        bundleFile = appStoreClient.getLatestAppBundle(pubName, appName);
-        assertNotNull(bundleFile);
+        @Cleanup("delete") final File latestBundleFile = appStoreClient.getLatestAppBundle(pubName, appName);
+        assertNotNull(latestBundleFile);
         assertTrue(bundleFile.length() > 0);
 
         apiDocs.addNote("request the latest taskbarIcon asset");

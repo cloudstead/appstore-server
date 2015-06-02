@@ -1,6 +1,5 @@
 package cloudos.appstore.server;
 
-import cloudos.appstore.ApiConstants;
 import cloudos.appstore.model.app.AppLayout;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,6 +16,8 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
+import static cloudos.appstore.ApiConstants.APPSTORE_ENDPOINT;
+import static cloudos.appstore.ApiConstants.MEMBERS_ENDPOINT;
 import static org.cobbzilla.util.io.FileUtil.mkdirOrDie;
 
 @Configuration
@@ -37,21 +38,23 @@ public class AppStoreApiConfiguration extends RestServerConfiguration
     public String getInvitationActivationUrl(String code) {
         return new StringBuilder()
                 .append(getPublicUriBase()).append(getHttp().getBaseUri())
-                .append(ApiConstants.MEMBERS_ENDPOINT)
+                .append(MEMBERS_ENDPOINT)
                 .append("/activate/").append(code).toString();
     }
 
-    public String getPublicBundleUrl(String appName, String version) {
-        return getPublicUriBase()
-                + appStore.getAssetUrlBase()
-                + "/apps/" + appName + "/" + version + "/"
-                + AppLayout.BUNDLE_TARBALL;
+    public String getPublicBundleUrl(String publisher, String appName, String version) {
+        return getAssetUrlBase(publisher, appName, version) + AppLayout.BUNDLE_TARBALL;
+    }
+
+    public String getAssetUrlBase(String publisher, String appName, String version) {
+        return getPublisherAssetBase(publisher) + "/" + appName + "/" + version + "/";
+    }
+
+    public String getPublisherAssetBase(String publisher) {
+        return getPublicUriBase() + "/" + APPSTORE_ENDPOINT + "/" + publisher;
     }
 
     public File getAppRepository(String publisherName) {
         return mkdirOrDie(new File(getAppStore().getAppRepository(), publisherName));
     }
-
-    public String getAssetUriBase() { return getPublicUriBase() + getAppStore().getAssetUrlBase(); }
-
 }

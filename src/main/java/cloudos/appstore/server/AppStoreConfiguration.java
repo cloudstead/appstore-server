@@ -10,7 +10,6 @@ public class AppStoreConfiguration {
     public static final String[] DEFAULT_SCHEMES = { "http", "https" };
 
     @Getter @Setter private String[] allowedAssetSchemes = DEFAULT_SCHEMES;
-    @Getter @Setter private String assetUrlBase = "/assets";
     @Getter @Setter private File appRepository;
 
 

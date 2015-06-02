@@ -1,14 +1,12 @@
 package cloudos.appstore.resources;
 
 import cloudos.appstore.ApiConstants;
-import cloudos.appstore.dao.AppListingDAO;
-import cloudos.appstore.dao.AppStorePublisherDAO;
-import cloudos.appstore.dao.AppStorePublisherMemberDAO;
-import cloudos.appstore.model.AppStoreAccount;
-import cloudos.appstore.model.AppStorePublisher;
-import cloudos.appstore.model.AppStorePublisherMember;
+import cloudos.appstore.dao.*;
+import cloudos.appstore.model.*;
+import cloudos.appstore.model.app.AppLayout;
 import cloudos.appstore.model.support.AppListing;
 import cloudos.appstore.model.support.AppStoreQuery;
+import cloudos.appstore.server.AppStoreApiConfiguration;
 import com.qmino.miredot.annotations.ReturnType;
 import com.sun.jersey.api.core.HttpContext;
 import lombok.extern.slf4j.Slf4j;
@@ -20,8 +18,10 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.io.File;
 import java.util.List;
 
+import static org.cobbzilla.util.daemon.ZillaRuntime.empty;
 import static org.cobbzilla.wizard.resources.ResourceUtil.*;
 
 @Consumes(MediaType.APPLICATION_JSON)
@@ -31,8 +31,11 @@ import static org.cobbzilla.wizard.resources.ResourceUtil.*;
 public class AppStoreResource {
 
     @Autowired private AppListingDAO appListingDAO;
+    @Autowired private CloudAppDAO appDAO;
+    @Autowired private CloudAppVersionDAO versionDAO;
     @Autowired private AppStorePublisherMemberDAO memberDAO;
     @Autowired private AppStorePublisherDAO publisherDAO;
+    @Autowired private AppStoreApiConfiguration configuration;
 
     /**
      * Search the app store for apps
@@ -71,14 +74,10 @@ public class AppStoreResource {
                              @PathParam("publisher") String publisher,
                              @PathParam("name") String name) {
 
-        final AppStoreAccount account = optionalUserPrincipal(context);
-        List<AppStorePublisherMember> memberships = null;
-        if (account != null) {
-            memberships = memberDAO.findByAccount(account.getUuid());
-        }
-        final AppStorePublisher appPublisher = publisherDAO.findByName(publisher);
+        final CloudAppContext ctx = appContext(context, publisher, name);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final AppListing app = appListingDAO.findAppListing(appPublisher, name, account, memberships);
+        final AppListing app = appListingDAO.findAppListing(ctx.publisher, name, ctx.account, memberDAO.findByAccount(ctx.account.getUuid()));
         if (app == null) return notFound();
 
         return ok(app);
@@ -94,22 +93,54 @@ public class AppStoreResource {
      */
     @GET
     @Path("/{publisher}/{name}/{version}")
+    @ReturnType("cloudos.appstore.model.support.AppListing")
     public Response findApp (@Context HttpContext context,
                              @PathParam("publisher") String publisher,
                              @PathParam("name") String name,
                              @PathParam("version") String version) {
 
-        final AppStoreAccount account = optionalUserPrincipal(context);
-        List<AppStorePublisherMember> memberships = null;
-        if (account != null) {
-            memberships = memberDAO.findByAccount(account.getUuid());
-        }
-        final AppStorePublisher appPublisher = publisherDAO.findByName(publisher);
+        final CloudAppContext ctx = appContext(context, publisher, name);
+        if (ctx.hasResponse()) return ctx.response;
 
-        final AppListing app = appListingDAO.findAppListing(appPublisher, name, version, account, memberships);
+        final AppListing app = appListingDAO.findAppListing(ctx.publisher, name, version, ctx.account, memberDAO.findByAccount(ctx.account.getUuid()));
         if (app == null) return notFound();
 
         return ok(app);
     }
 
+    /**
+     * Get an asset from a particular version
+     * @param context used to retrieve the logged-in user session. OK if there is no session (allow anonymous)
+     * @param publisher the name of the app publisher
+     * @param name the name of the app
+     * @param version the version of the app
+     * @param asset name of the asset: smallIcon, largeIcon, or taskbarIcon
+     * @return the asset as a data stream, with appropriate Content-Type set
+     */
+    @GET
+    @Path("/{publisher}/{name}/{version}/{asset}")
+    @ReturnType("cloudos.appstore.model.support.AppListing")
+    public Response findAsset (@Context HttpContext context,
+                               @PathParam("publisher") String publisher,
+                               @PathParam("name") String name,
+                               @PathParam("version") String version,
+                               @PathParam("asset") String asset) {
+
+        if (empty(asset)) return invalid("err.asset.empty");
+
+        final CloudAppContext ctx = appContext(context, publisher, name);
+        if (ctx.hasResponse()) return ctx.response;
+
+        final CloudAppVersion appVersion = versionDAO.findByUuidAndVersion(ctx.app.getUuid(), version);
+        if (appVersion == null) return notFound(publisher+"/"+name+"/any-published-version");
+
+        final File assetFile = new AppLayout(configuration.getAppRepository(publisher), name, version).findLocalAsset(asset);
+        if (assetFile == null) return notFound(publisher+"/"+name+"/"+version+"/"+asset);
+
+        return streamFile(assetFile);
+    }
+
+    protected CloudAppContext appContext(HttpContext context, String publisher, String name) {
+        return new CloudAppContext(publisherDAO, memberDAO, appDAO, context, publisher, name, true, true);
+    }
 }
