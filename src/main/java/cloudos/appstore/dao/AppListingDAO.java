@@ -4,7 +4,6 @@ import cloudos.appstore.model.*;
 import cloudos.appstore.model.app.AppLayout;
 import cloudos.appstore.model.app.AppManifest;
 import cloudos.appstore.model.support.AppListing;
-import cloudos.appstore.model.support.AppStoreObjectType;
 import cloudos.appstore.model.support.AppStoreQuery;
 import cloudos.appstore.server.AppStoreApiConfiguration;
 import lombok.AllArgsConstructor;
@@ -187,58 +186,9 @@ public class AppListingDAO {
         return (List<AppListing>) CollectionUtils.select(candidates, new AppQueryPredicate(query));
     }
 
-    private boolean matches(AppStoreQuery query, AppListing listing) {
-
-        if (query.hasLevel() && listing.getLevel() != query.getLevel()) return false;
-
-        final String filter = query.getFilter();
-        if (empty(filter)) return true;
-
-        final AppStoreObjectType type = query.hasType() ? query.getType() : AppStoreObjectType.app;
-
-        if (query.hasType()) {
-            switch (type) {
-                case account:
-                    return matchesAccount(filter, listing);
-
-                case publisher:
-                    return matchesPublisher(filter, listing);
-
-                case app:
-                default:
-                    return matchesApp(filter, listing);
-            }
-
-        } else {
-            return matchesAccount(filter, listing)
-                    || matchesPublisher(filter, listing)
-                    || matchesApp(filter, listing);
-        }
-    }
-
-    private boolean matchesAccount(String filter, AppListing listing) {
-        final AppStoreAccount author = listing.getPrivateData().getAuthor();
-        return author.getFirstName().contains(filter)
-                || author.getLastName().contains(filter)
-                || author.getFullName().contains(filter)
-                || author.getName().contains(filter);
-    }
-
-    private boolean matchesPublisher(String filter, AppListing listing) {
-        final AppStorePublisher publisher = listing.getPrivateData().getPublisher();
-        return publisher.getName().contains(filter);
-    }
-
-    private boolean matchesApp(String filter, AppListing listing) {
-        final CloudApp app = listing.getPrivateData().getApp();
-        final AppMutableData assets = listing.getData();
-        return app.getName().contains(filter)
-                || (assets != null && (assets.getBlurb().contains(filter) || assets.getDescription().contains(filter)));
-    }
-
     @AllArgsConstructor
     private class AppQueryPredicate implements Predicate {
         @Getter @Setter private AppStoreQuery query;
-        public boolean evaluate(Object o) { return matches(query, (AppListing) o); }
+        public boolean evaluate(Object o) { return ((AppListing) o).matches(query); }
     }
 }
