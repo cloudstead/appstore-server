@@ -189,6 +189,8 @@ public class AppListingDAO {
 
     private boolean matches(AppStoreQuery query, AppListing listing) {
 
+        if (query.hasLevel() && listing.getLevel() != query.getLevel()) return false;
+
         final String filter = query.getFilter();
         if (empty(filter)) return true;
 

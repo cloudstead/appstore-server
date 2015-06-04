@@ -18,6 +18,7 @@ import java.util.Map;
 
 import static cloudos.appstore.ApiConstants.APPSTORE_ENDPOINT;
 import static cloudos.appstore.ApiConstants.MEMBERS_ENDPOINT;
+import static org.apache.commons.lang3.StringUtils.chop;
 import static org.cobbzilla.util.io.FileUtil.mkdirOrDie;
 
 @Configuration
@@ -51,7 +52,11 @@ public class AppStoreApiConfiguration extends RestServerConfiguration
     }
 
     public String getPublisherAssetBase(String publisher) {
-        return getPublicUriBase() + "/" + APPSTORE_ENDPOINT + "/" + publisher;
+        final String base = getPublicUriBase();
+
+        // chop trailing slash from public base uri, if there is one
+        return new StringBuilder(base.endsWith("/") ? chop(base) : base)
+                .append(APPSTORE_ENDPOINT).append("/").append(publisher).toString();
     }
 
     public File getAppRepository(String publisherName) {

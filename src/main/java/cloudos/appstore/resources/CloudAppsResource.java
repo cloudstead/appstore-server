@@ -110,8 +110,12 @@ public class CloudAppsResource {
                         .setAuthor(ctx.account.getUuid())
                         .setPublisher(ctx.publisher.getUuid())
                         .setName(manifest.getName())
-                        .setVisibility(request.getVisibility());
+                        .setVisibility(request.getVisibility())
+                        .setLevel(manifest.getLevel());
                 ctx.app = appDAO.create(ctx.app);
+            } else {
+                if (ctx.app.getLevel() != manifest.getLevel()) return invalid("err.defineApp.cannotChangeLevel");
+                if (ctx.app.getVisibility() != request.getVisibility()) return invalid("err.defineApp.cannotChangeVisibility");
             }
 
             // This is where it should live in the main repository... anything already there?
