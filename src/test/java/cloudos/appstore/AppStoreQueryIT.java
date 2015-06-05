@@ -4,6 +4,7 @@ import cloudos.appstore.dao.CloudAppDAO;
 import cloudos.appstore.dao.CloudAppVersionDAO;
 import cloudos.appstore.mock.MockAppListingDAO;
 import cloudos.appstore.model.*;
+import cloudos.appstore.model.app.AppLevel;
 import cloudos.appstore.model.support.AppListing;
 import cloudos.appstore.model.support.AppStoreQuery;
 import org.cobbzilla.wizard.dao.SearchResults;
@@ -51,6 +52,7 @@ public class AppStoreQueryIT extends AppStoreITBase {
                 .setAuthor(admin.getUuid())
                 .setPublisher(publisher.getUuid())
                 .setVisibility(AppVisibility.everyone)
+                .setLevel(AppLevel.app)
                 .setName(i + (i % 3 == 0 ? MATCH_NAME : "") + "-" + randomName());
     }
 

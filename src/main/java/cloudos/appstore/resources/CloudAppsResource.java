@@ -42,6 +42,7 @@ import static org.cobbzilla.wizard.resources.ResourceUtil.*;
 public class CloudAppsResource {
 
     @Autowired private AppStoreApiConfiguration configuration;
+    @Autowired private AppStoreAccountDAO accountDAO;
     @Autowired private CloudAppDAO appDAO;
     @Autowired private CloudAppVersionDAO versionDAO;
     @Autowired private AppListingDAO appListingDAO;
@@ -203,12 +204,12 @@ public class CloudAppsResource {
     @GET
     @Path("/{publisher}/{name}")
     @ReturnType("cloudos.appstore.model.CloudApp")
-    public Response getApp(@Context HttpContext context,
-                               @PathParam("publisher") String publisher,
-                               @PathParam("name") String name) {
+    public Response findApp(@Context HttpContext context,
+                            @PathParam("publisher") String publisher,
+                            @PathParam("name") String name) {
         final CloudAppContext ctx = appContext(context, publisher, name, true);
         if (ctx.hasResponse()) return ctx.response;
-        ctx.app.setVersions(versionDAO.findByApp(ctx.app.getUuid()));
+        ctx.populateApp(accountDAO, versionDAO);
         return ok(ctx.app);
     }
 

@@ -66,10 +66,10 @@ public class CloudApiResource {
             response = HttpUtil.getResponse(requestBean);
         } catch (IOException e) {
             log.error("Error calling cloud verification URI, request="+requestBean+": "+e, e);
-            return serverError();
+            return invalid("err.cloudSession.callback.error", e.toString());
         }
 
-        if (response.getStatus() != 200) return forbidden();
+        if (response.getStatus() != 200) return invalid("err.cloudSession.callback.failed", response.toString());
 
         final String cloudOsHash = response.getEntityString();
         if (cloudOsHash == null || !cloudOsHash.equals(hash)) return forbidden();

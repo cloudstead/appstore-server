@@ -19,6 +19,8 @@ import static org.junit.Assert.assertEquals;
 @Slf4j
 public class AppStoreCloudIT extends AppStoreITBase {
 
+    public static final String DOC_TARGET = "CloudOs authentication";
+
     private Server mockCloudOs;
     private int mockCloudOsPort;
     private MockCloudOsHandler cloudOsHandler;
@@ -38,9 +40,10 @@ public class AppStoreCloudIT extends AppStoreITBase {
 
     @Test public void testCloudAccount () throws Exception {
 
+        apiDocs.startRecording(DOC_TARGET, "test register and authenticate cloud account");
         RestResponse response;
 
-        // As admin, register a cloud (normally the cloudstead-server would do this when the cloudos is launched)
+        apiDocs.addNote("As admin, register a cloud (normally the cloudstead-server would do this when the cloudos is launched");
         setToken(adminToken);
         final AppStoreCloudAccount cloudAccount = new AppStoreCloudAccount()
                 .setUri("http://127.0.0.1:"+mockCloudOsPort+"/api/verify")
@@ -50,7 +53,7 @@ public class AppStoreCloudIT extends AppStoreITBase {
 
         setToken(null);
 
-        // Start a session, acting on behalf of that cloud (the appstore-server will callback to the cloudos to authenticate the request)
+        apiDocs.addNote("Start a session, acting on behalf of that cloud (the appstore-server will callback to the cloudos to authenticate the request)");
         CloudAccountSessionRequest request = new CloudAccountSessionRequest(cloudAccount.getUcid());
         cloudOsHandler.setSessionRequest(request);
         response = doPost(ApiConstants.CLOUDS_API_ENDPOINT + "/session", toJson(request));

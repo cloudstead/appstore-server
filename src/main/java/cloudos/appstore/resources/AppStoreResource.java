@@ -77,7 +77,8 @@ public class AppStoreResource {
         final CloudAppContext ctx = appContext(context, publisher, name);
         if (ctx.hasResponse()) return ctx.response;
 
-        final AppListing app = appListingDAO.findAppListing(ctx.publisher, name, ctx.account, memberDAO.findByAccount(ctx.account.getUuid()));
+        final List<AppStorePublisherMember> members = ctx.hasAccount() ? memberDAO.findByAccount(ctx.account.getUuid()) : null;
+        final AppListing app = appListingDAO.findAppListing(ctx.publisher, name, ctx.account, members);
         if (app == null) return notFound();
 
         return ok(app);

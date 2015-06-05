@@ -1,8 +1,6 @@
 package cloudos.appstore.resources;
 
-import cloudos.appstore.dao.AppStorePublisherDAO;
-import cloudos.appstore.dao.AppStorePublisherMemberDAO;
-import cloudos.appstore.dao.CloudAppDAO;
+import cloudos.appstore.dao.*;
 import cloudos.appstore.model.AppStoreAccount;
 import cloudos.appstore.model.AppStorePublisher;
 import cloudos.appstore.model.AppStorePublisherMember;
@@ -14,19 +12,16 @@ import javax.ws.rs.core.Response;
 import static org.cobbzilla.util.daemon.ZillaRuntime.die;
 import static org.cobbzilla.wizard.resources.ResourceUtil.*;
 
-/**
- * Created by jcobb on 6/2/15.
- */
 public class CloudAppContext {
 
     public AppStoreAccount account;
+    public boolean hasAccount() { return account != null; }
+
     public AppStorePublisher publisher;
     public AppStorePublisherMember membership;
     public CloudApp app;
 
     public Response response = null;
-
-
     public boolean hasResponse() {
         return response != null;
     }
@@ -93,5 +88,11 @@ public class CloudAppContext {
                     die("invalid visibility: " + app.getVisibility());
             }
         }
+    }
+
+    public void populateApp(AppStoreAccountDAO accountDAO, CloudAppVersionDAO versionDAO) {
+        app.setPublishedBy(publisher);
+        app.setAuthoredBy(accountDAO.findByUuid(app.getAuthor()));
+        app.setVersions(versionDAO.findByApp(app.getUuid()));
     }
 }

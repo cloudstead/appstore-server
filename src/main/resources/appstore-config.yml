@@ -26,6 +26,17 @@ http:
   port: {{APPSTORE_SERVER_PORT}}
   baseUri: /
 
+staticAssets:
+  baseUri: /docs/
+  assetRoot: static/
+  localOverride: {{ASSETS_DIR}}
+  mustacheCacheEnabled: false
+  mustacheResourceRoot: static/
+  utilPaths:
+    INDEX_PATH: /index.html
+    INDEX_ALIASES: /:/index.php
+    LOCALIZE: /localize
+
 jersey:
   resourcePackages:
     - org.cobbzilla.wizard.filters.auth
