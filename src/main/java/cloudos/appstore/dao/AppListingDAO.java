@@ -153,11 +153,11 @@ public class AppListingDAO {
                 .setPrices(priceDAO.findByApp(app.getUuid()));
 
         listing.getPrivateData()
-                .setPublisher(publisher)
+                .setPublisher(publisher.publicView())
                 .setApp(app)
                 .setVersion(appVersion)
-                .setAuthor(author)
-                .setApprovedBy(approvedBy)
+                .setAuthor(author.publicView())
+                .setApprovedBy(approvedBy.publicView())
                 .setManifest(manifest);
 
         return listing;

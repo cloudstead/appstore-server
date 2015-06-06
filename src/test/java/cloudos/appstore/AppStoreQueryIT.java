@@ -68,11 +68,11 @@ public class AppStoreQueryIT extends AppStoreITBase {
     private AppListing buildPublishedApp(CloudApp app, CloudAppVersion appVersion) {
         AppListing listing = new AppListing().setBundleUrl(randomName());
         listing.getPrivateData()
-                .setPublisher(publisher)
+                .setPublisher(publisher.publicView())
                 .setApp(app)
                 .setVersion(appVersion)
-                .setAuthor(admin)
-                .setApprovedBy(admin);
+                .setAuthor(admin.publicView())
+                .setApprovedBy(admin.publicView());
         return listing;
     }
 
