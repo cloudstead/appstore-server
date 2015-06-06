@@ -65,57 +65,71 @@ public class AppListingDAO {
         final AppListing appListing = findAppListing(account, memberships, app);
         if (appListing == null) return null;
 
-        final AppManifest manifest = getManifest(appPublisher, app, version);
+        final String locale = account == null ? null : account.getLocale();
+
+        // overwrite manifest with the one from this version
+        final File appRepository = configuration.getAppRepository(appPublisher.getName());
+        final AppLayout appLayout = new AppLayout(appRepository, app.getName(), version);
+        final AppManifest manifest = AppManifest.load(appLayout.getVersionDir());
+        appLayout.localizeAssets(manifest, locale);
+
         return new AppListing(appListing, appVersion, manifest);
     }
 
     protected AppListing findAppListing(AppStoreAccount account, List<AppStorePublisherMember> memberships, CloudApp app) {
+        final String locale = account == null ? null : account.getLocale();
         switch (app.getVisibility()) {
-            case everyone: return buildAppListing(app);
+            case everyone: return buildAppListing(app, locale);
             case members:
                 if (empty(memberships)) return null;
                 for (AppStorePublisherMember m : memberships) {
-                    if (m.getPublisher().equals(app.getPublisher())) return buildAppListing(app);
+                    if (m.getPublisher().equals(app.getPublisher())) return buildAppListing(app, locale);
                 }
                 return null;
             default:
             case publisher:
-                return app.getPublisher().equals(account.getUuid()) ? buildAppListing(app) : null;
+                return account == null ? null : app.getPublisher().equals(account.getUuid()) ? buildAppListing(app, locale) : null;
         }
     }
 
-    private Map<String, AppListing> appCache = new ConcurrentHashMap<>();
+    // Map of app->locale->listing
+    private Map<String, Map<String, AppListing>> appCache = new ConcurrentHashMap<>();
 
     public void flush(CloudApp app) { flush(app.getUuid()); }
     public void flush(String uuid) { appCache.remove(uuid); }
-
-    private final Transformer TO_LISTING = new Transformer() {
-        @Override public Object transform(Object o) { return buildAppListing((CloudApp) o); }
-    };
 
     private static final Predicate SKIP_UNPUBLISHED = new Predicate() {
         @Override public boolean evaluate(Object object) { return object != AppListing.UNPUBLISHED; }
     };
 
-    protected List<AppListing> toListing(List<CloudApp> apps) {
-        final List<AppListing> list = (List<AppListing>) CollectionUtils.collect(apps, TO_LISTING);
+    protected List<AppListing> toListing(List<CloudApp> apps, String locale) {
+        // todo: cache AppToListingTransformers, they are immutable and reusable
+        final List<AppListing> list = (List<AppListing>) CollectionUtils.collect(apps, new AppToListingTransformer(locale));
         CollectionUtils.filter(list, SKIP_UNPUBLISHED);
         return list;
     }
 
-    private AppListing buildAppListing(CloudApp app) {
+    private AppListing buildAppListing(CloudApp app, String locale) {
 
-        AppListing listing = appCache.get(app.getUuid());
-        if (listing != null) return listing;
+        if (locale == null) locale = AppManifest.DEFAULT_LOCALE;
 
-        listing = buildAppListing_internal(app);
+        AppListing listing;
+        Map<String, AppListing> listings = appCache.get(app.getUuid());
+        if (listings != null) {
+            listing = listings.get(locale);
+            if (listing != null) return listing;
+        } else {
+            listings = new ConcurrentHashMap<>();
+            appCache.put(app.getUuid(), listings);
+        }
 
-        appCache.put(app.getUuid(), listing);
+        listing = buildAppListing_internal(app, locale);
+        listings.put(app.getUuid(), listing);
 
         return listing;
     }
 
-    private AppListing buildAppListing_internal(CloudApp app) {
+    private AppListing buildAppListing_internal(CloudApp app, String locale) {
 
         final AppStorePublisher publisher = publisherDAO.findByUuid(app.getPublisher());
         final CloudAppVersion appVersion = versionDAO.findLatestPublishedVersion(app.getUuid());
@@ -128,7 +142,10 @@ public class AppListingDAO {
         final AppStoreAccount approvedBy = accountDAO.findByUuid(appVersion.getApprovedBy());
 
         final String version = appVersion.getVersion();
-        final AppManifest manifest = getManifest(publisher, app, version);
+        final File appRepository = configuration.getAppRepository(publisher.getName());
+        final AppLayout appLayout = new AppLayout(appRepository, app.getName(), version);
+        final AppManifest manifest = AppManifest.load(appLayout.getVersionDir());
+        appLayout.localizeAssets(manifest, locale);
 
         final AppListing listing = new AppListing()
                 .setBundleUrl(configuration.getPublicBundleUrl(publisher.getName(), app.getName(), version))
@@ -146,12 +163,6 @@ public class AppListingDAO {
         return listing;
     }
 
-    private AppManifest getManifest(AppStorePublisher publisher, CloudApp app, String version) {
-        final File appRepository = configuration.getAppRepository(publisher.getName());
-        final AppLayout appLayout = new AppLayout(appRepository, app.getName(), version);
-        return AppManifest.load(appLayout.getVersionDir());
-    }
-
     public SearchResults<AppListing> search(final AppStoreAccount account,
                                             final List<AppStorePublisherMember> memberships,
                                             final AppStoreQuery query) {
@@ -163,8 +174,11 @@ public class AppListingDAO {
             apps.addAll(appDAO.findVisibleToMember(memberships));
         }
 
+        // Use locale from query, if not found use locale from account, if not found use default
+        final String locale = query.hasLocale() ? query.getLocale() : account != null ? account.getLocale() : null;
+
         // Transform into listings (will also remove apps that somehow have no published version)
-        final List<AppListing> candidates = toListing(apps);
+        final List<AppListing> candidates = toListing(apps, locale);
 
         // Filter to find matches
         final List<AppListing> matches = filter(candidates, query);
@@ -190,5 +204,13 @@ public class AppListingDAO {
     private class AppQueryPredicate implements Predicate {
         @Getter @Setter private AppStoreQuery query;
         public boolean evaluate(Object o) { return ((AppListing) o).matches(query); }
+    }
+
+    @AllArgsConstructor
+    private class AppToListingTransformer implements Transformer {
+        public String locale;
+        @Override public Object transform(Object o) {
+            return buildAppListing((CloudApp) o, locale);
+        }
     }
 }

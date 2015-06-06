@@ -17,9 +17,12 @@ public class AppStoreQueryMain extends AppStoreMainBase<AppStoreQueryOptions> {
         final AppStoreQueryOptions options = getOptions();
 
         final RestResponse response;
-        response = api.post(ApiConstants.SEARCH_ENDPOINT, JsonUtil.toJson(options.getQueryObject()));
-
-        log.info("Search results:\n"+response.json+"\n");
+        response = api.doPost(ApiConstants.SEARCH_ENDPOINT, JsonUtil.toJson(options.getQuery()));
+        if (response.isSuccess()) {
+            out(response.json);
+        } else {
+            die(response.toString());
+        }
     }
 
 }

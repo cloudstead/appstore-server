@@ -162,13 +162,18 @@ public class CloudAppsResource {
             }
 
             finalAppLayout.writeManifest(manifest);
+            final AppLayout bundleLayout = new AppLayout(manifest.getScrubbedName(), bundle.getBundleDir());
             if (manifest.hasAssets()) {
-                final AppLayout bundleLayout = new AppLayout(manifest.getScrubbedName(), bundle.getBundleDir());
                 if (!bundleLayout.copyAssets(finalAppLayout)) {
                     final String msg = "{err.defineApp.copyingAssets}";
                     log.error(msg);
                     return serverError();
                 }
+            }
+            if (!bundleLayout.copyTranslations(finalAppLayout)) {
+                final String msg = "{err.defineApp.copyingTranslations}";
+                log.error(msg);
+                return serverError();
             }
 
             // Is there a version?

@@ -3,6 +3,7 @@ package cloudos.appstore.resources;
 import cloudos.appstore.ApiConstants;
 import cloudos.appstore.dao.*;
 import cloudos.appstore.model.AppStoreAccount;
+import cloudos.appstore.model.support.AppStoreObjectType;
 import cloudos.appstore.model.support.AppStoreQuery;
 import com.qmino.miredot.annotations.ReturnType;
 import com.sun.jersey.api.core.HttpContext;
@@ -50,6 +51,9 @@ public class AppStoreSearchResource {
         // sanity check -- must be admin
         final AppStoreAccount account = userPrincipal(context);
         if (!account.isAdmin()) return forbidden();
+
+        // search apps by default
+        if (!query.hasType()) query.setType(AppStoreObjectType.app);
 
         final SearchResults results;
         switch (query.getType()) {
