@@ -111,12 +111,12 @@ public class CloudAppsResource {
                         .setAuthor(ctx.account.getUuid())
                         .setPublisher(ctx.publisher.getUuid())
                         .setName(manifest.getName())
-                        .setVisibility(request.getVisibility())
+                        .setVisibility(request.hasVisibility() ? request.getVisibility() : AppVisibility.publisher)
                         .setLevel(manifest.getLevel());
                 ctx.app = appDAO.create(ctx.app);
             } else {
                 if (ctx.app.getLevel() != manifest.getLevel()) return invalid("err.defineApp.cannotChangeLevel");
-                if (ctx.app.getVisibility() != request.getVisibility()) return invalid("err.defineApp.cannotChangeVisibility");
+                if (request.hasVisibility() && ctx.app.getVisibility() != request.getVisibility()) return invalid("err.defineApp.cannotChangeVisibility");
             }
 
             // This is where it should live in the main repository... anything already there?
@@ -330,11 +330,11 @@ public class CloudAppsResource {
      * @param name name of the app
      * @param attribute name of the attribute to update
      * @param value the value for the new attribute
-     * @return the updated version information
+     * @return the updated app information
      */
     @POST
     @Path("/{publisher}/{name}/attributes/{attribute}")
-    @ReturnType("cloudos.appstore.model.CloudAppVersion")
+    @ReturnType("cloudos.appstore.model.CloudApp")
     public Response updateAttribute(@Context HttpContext context,
                                     @PathParam("publisher") String publisher,
                                     @PathParam("name") String name,
@@ -359,7 +359,8 @@ public class CloudAppsResource {
     }
 
     /**
-     * Update status of a particular app version
+     * Update status of a particular app version. Only admins are allowed to set status to 'published'.
+     * If a non-admin tries to set status to 'published', it will instead be set to 'pending'
      * @param context used to retrieve the logged-in user session
      * @param publisher name of the publisher
      * @param name name of the app
@@ -397,15 +398,13 @@ public class CloudAppsResource {
                     break;
 
                 case published:
-                    // admins do this to pending requests, makes the app publicly published
+                    // If this is an admin, set the 'approved' flag
+                    appVersion.setStatus(status);
                     if (ctx.account.isAdmin()) {
-                        appVersion.setStatus(status);
                         appVersion.setApprovedBy(ctx.account.getUuid());
-                        versionDAO.update(appVersion);
-                        break;
                     }
-                    // non-admins are not allowed to publish
-                    return forbidden();
+                    versionDAO.update(appVersion);
+                    break;
 
                 case retired:
                     // anyone can make an app retired.
