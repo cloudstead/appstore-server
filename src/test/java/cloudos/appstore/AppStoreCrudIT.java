@@ -21,7 +21,7 @@ public class AppStoreCrudIT extends AppStoreITBase {
     private static TestApp testApp;
 
     @BeforeClass public static void setupApp() throws Exception {
-        testApp = webServer.buildAppTarball(TEST_MANIFEST, null, TEST_ICON);
+        testApp = webServer.buildAppBundle(TEST_MANIFEST, null, TEST_ICON);
     }
 
     @Test public void testAppCrud () throws Exception {
