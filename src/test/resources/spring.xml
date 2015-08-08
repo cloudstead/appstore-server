@@ -15,18 +15,14 @@
     <context:component-scan base-package="cloudos.appstore.model"/>
 
     <!-- jersey resources, DAOs -->
-    <!-- Mock out PublishedAppDAO, so tests can manipulate the published apps easily -->
     <context:component-scan base-package="cloudos.appstore.dao">
-        <context:exclude-filter type="regex" expression="cloudos.appstore.dao.PublishedAppDAO" />
+        <!-- Mock out AppListingDAO, so AppStoreQueryIT and other tests can easily manipulate the published apps -->
+        <context:exclude-filter type="regex" expression="cloudos.appstore.dao.AppListingDAO" />
     </context:component-scan>
     <bean class="cloudos.appstore.mock.MockAppListingDAO"/>
 
     <context:component-scan base-package="cloudos.appstore.auth"/>
     <context:component-scan base-package="cloudos.appstore.resources"/>
-
-    <!-- MQ client -->
-    <!--<context:component-scan base-package="org.cobbzilla.wizard.spring.config.mq"/>-->
-    <!--<context:component-scan base-package="org.cobbzilla.mq"/>-->
 
     <!-- validator -->
     <bean id="uniqueValidator" class="org.cobbzilla.wizard.validation.UniqueValidator"/>

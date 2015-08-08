@@ -1,13 +1,21 @@
 package cloudos.appstore.mock;
 
 import cloudos.appstore.dao.AppListingDAO;
-import cloudos.appstore.model.*;
+import cloudos.appstore.model.AppStoreAccount;
+import cloudos.appstore.model.AppStorePublisher;
+import cloudos.appstore.model.AppStorePublisherMember;
+import cloudos.appstore.model.CloudApp;
+import cloudos.appstore.model.app.AppManifest;
 import cloudos.appstore.model.support.AppListing;
-import cloudos.appstore.model.support.AppStoreQuery;
-import org.cobbzilla.wizard.dao.SearchResults;
+import org.cobbzilla.util.io.StreamUtil;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.cobbzilla.util.daemon.ZillaRuntime.die;
+import static org.cobbzilla.wizardtest.RandomUtil.randomName;
 
 public class MockAppListingDAO extends AppListingDAO {
 
@@ -18,8 +26,10 @@ public class MockAppListingDAO extends AppListingDAO {
     @Override
     public AppListing findAppListing(AppStorePublisher appPublisher, String name, AppStoreAccount account, List<AppStorePublisherMember> memberships) {
         for (AppListing listing : testApps) {
-            if (listing.getPublisher().equals(appPublisher.getName())
-                    && listing.getName().equals(name)) return listing;
+            if (listing.getPublisher().equals(appPublisher.getName()) && listing.getName().equals(name)) {
+                final CloudApp app = appDAO.findByPublisherAndName(appPublisher.getUuid(), listing.getName());
+                return listing.setAvailableVersions(versionDAO.findPublishedVersions(app.getUuid()));
+            }
         }
         return null;
     }
@@ -27,7 +37,9 @@ public class MockAppListingDAO extends AppListingDAO {
     @Override
     protected AppListing findAppListing(AppStoreAccount account, List<AppStorePublisherMember> memberships, CloudApp app) {
         for (AppListing listing : testApps) {
-            if (listing.getName().equals(app.getName())) return listing;
+            if (listing.getName().equals(app.getName())) {
+                return listing.setAvailableVersions(versionDAO.findPublishedVersions(app.getUuid()));
+            }
         }
         return null;
     }
@@ -45,14 +57,14 @@ public class MockAppListingDAO extends AppListingDAO {
     @Override public void flush(CloudApp app) {}
 
     @Override
-    public SearchResults<AppListing> search(AppStoreAccount account, List<AppStorePublisherMember> memberships, AppStoreQuery query) {
+    protected AppManifest loadManifest(File versionDir) {
+        try {
+            final AppManifest manifest = AppManifest.load(StreamUtil.loadResourceAsFile("apps/simple-app-manifest.json"));
+            manifest.setName(manifest.getName()+"-"+randomName()); // give it a unique name
+            return manifest;
 
-        final SearchResults<AppListing> results = new SearchResults<>();
-        for (AppListing listing : testApps) {
-            if (listing.getName().contains(query.getFilter())) results.addResult(listing);
+        } catch (IOException e) {
+            return die("loadManifest: error loading dummy manifest: "+e, e);
         }
-        results.setTotalCount(testApps.size());
-        return results;
     }
-
 }

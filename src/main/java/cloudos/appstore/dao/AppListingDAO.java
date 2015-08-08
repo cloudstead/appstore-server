@@ -70,7 +70,7 @@ public class AppListingDAO {
         // overwrite manifest with the one from this version
         final File appRepository = configuration.getAppRepository(appPublisher.getName());
         final AppLayout appLayout = new AppLayout(appRepository, app.getName(), version);
-        final AppManifest manifest = AppManifest.load(appLayout.getVersionDir());
+        final AppManifest manifest = loadManifest(appLayout.getVersionDir());
         appLayout.localizeAssets(manifest, locale);
 
         return new AppListing(appListing, appVersion, manifest);
@@ -144,7 +144,7 @@ public class AppListingDAO {
         final String version = appVersion.getVersion();
         final File appRepository = configuration.getAppRepository(publisher.getName());
         final AppLayout appLayout = new AppLayout(appRepository, app.getName(), version);
-        final AppManifest manifest = AppManifest.load(appLayout.getVersionDir());
+        final AppManifest manifest = loadManifest(appLayout.getVersionDir());
         appLayout.localizeAssets(manifest, locale);
 
         final AppListing listing = new AppListing()
@@ -161,6 +161,11 @@ public class AppListingDAO {
                 .setManifest(manifest);
 
         return listing;
+    }
+
+    // allows tests to override this, like AppStoreQueryIT
+    protected AppManifest loadManifest(File versionDir) {
+        return AppManifest.load(versionDir);
     }
 
     public SearchResults<AppListing> search(final AppStoreAccount account,

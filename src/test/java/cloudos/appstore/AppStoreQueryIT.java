@@ -40,8 +40,8 @@ public class AppStoreQueryIT extends AppStoreITBase {
         final MockAppListingDAO publishedAppDAO = getBean(MockAppListingDAO.class);
 
         for (int i=0; i<NUM_APPS; i++) {
-            CloudApp app = cloudAppDAO.create(buildCloudApp(i));
-            CloudAppVersion appVersion = versionDAO.create(buildCloudAppVersion(app));
+            final CloudApp app = cloudAppDAO.create(buildCloudApp(i));
+            final CloudAppVersion appVersion = versionDAO.create(buildCloudAppVersion(app));
             publishedAppDAO.addApp(buildPublishedApp(app, appVersion));
         }
     }

@@ -3,7 +3,7 @@ package cloudos.appstore.dao;
 import net.rubyeye.xmemcached.MemcachedClient;
 import net.rubyeye.xmemcached.MemcachedClientBuilder;
 import net.rubyeye.xmemcached.XMemcachedClientBuilder;
-import cloudos.appstore.model.support.ApiToken;
+import cloudos.model.auth.ApiToken;
 import org.springframework.stereotype.Repository;
 
 import static org.cobbzilla.util.daemon.ZillaRuntime.die;

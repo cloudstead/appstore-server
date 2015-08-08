@@ -1,7 +1,7 @@
 package cloudos.appstore;
 
 import cloudos.appstore.model.*;
-import cloudos.appstore.model.support.ApiToken;
+import cloudos.model.auth.ApiToken;
 import cloudos.appstore.model.support.AppStoreAccountRegistration;
 import cloudos.appstore.test.AppStoreTestUtil;
 import cloudos.appstore.test.TestApp;
@@ -95,8 +95,8 @@ public class AppStoreCrudIT extends AppStoreITBase {
         appStoreClient.deleteVersion(pubName, appName, version);
         try {
             apiDocs.addNote("try to lookup the version, should fail");
-            appStoreClient.findVersion( pubName, appName, version);
-            fail("expected 404 response");
+            final CloudAppVersion notFound = appStoreClient.findVersion(pubName, appName, version);
+            assertNull(notFound);
         } catch (NotFoundException expected) { /* noop */ }
 
 
@@ -104,8 +104,8 @@ public class AppStoreCrudIT extends AppStoreITBase {
         appStoreClient.deleteApp(pubName, appName);
         try {
             apiDocs.addNote("try to lookup the app, should fail");
-            appStoreClient.findApp(pubName, appName);
-            fail("expected 404 response");
+            final CloudApp notFound = appStoreClient.findApp(pubName, appName);
+            assertNull(notFound);
         } catch (NotFoundException expected) { /* noop */ }
 
         apiDocs.addNote("delete the account");
@@ -115,14 +115,14 @@ public class AppStoreCrudIT extends AppStoreITBase {
 
         try {
             apiDocs.addNote("as admin, try to lookup the deleted account, should fail");
-            appStoreClient.findAccount(accountUuid);
-            fail("expected 404 response");
+            final AppStoreAccount notFound = appStoreClient.findAccount(accountUuid);
+            assertNull(notFound);
         } catch (NotFoundException expected) { /* noop */ }
 
         try {
             apiDocs.addNote("as admin, try to lookup the deleted publisher, should fail");
-            appStoreClient.findPublisher(accountUuid);
-            fail("expected 404 response");
+            final AppStorePublisher notFound = appStoreClient.findPublisher(accountUuid);
+            assertNull(notFound);
         } catch (NotFoundException expected) { /* noop */ }
 
         appStoreClient.popToken();
