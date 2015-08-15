@@ -26,7 +26,7 @@ public abstract class AppStoreMainBase<T extends AppStoreMainOptions> extends Ma
     }
 
     @Override protected String getApiHeaderTokenName() { return H_TOKEN; }
-    @Override protected String getLoginUri() { return AUTH_ENDPOINT; }
+    @Override protected String getLoginUri(String account) { return AUTH_ENDPOINT; }
 
     @Override protected String getSessionId(RestResponse response) throws Exception {
         return fromJson(response.json, ApiToken.class).getToken();
