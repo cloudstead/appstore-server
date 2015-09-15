@@ -134,12 +134,16 @@ public class AppListingDAO {
         final AppStorePublisher publisher = publisherDAO.findByUuid(app.getPublisher());
         final CloudAppVersion appVersion = versionDAO.findLatestPublishedVersion(app.getUuid());
         if (appVersion == null) {
-            log.warn("buildAppListing: No published version: "+app.getUuid());
+            log.warn("buildAppListing_internal: No published version: "+app.getUuid());
             return AppListing.UNPUBLISHED;
         }
 
         final AppStoreAccount author = accountDAO.findByUuid(app.getAuthor());
         final AppStoreAccount approvedBy = accountDAO.findByUuid(appVersion.getApprovedBy());
+        if (approvedBy == null) {
+            log.warn("buildAppListing_internal: Published version not approved: "+app.getUuid());
+            return AppListing.UNPUBLISHED;
+        }
 
         final String version = appVersion.getVersion();
         final File appRepository = configuration.getAppRepository(publisher.getName());
