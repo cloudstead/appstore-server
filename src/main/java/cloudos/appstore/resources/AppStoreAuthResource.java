@@ -9,7 +9,7 @@ import cloudos.appstore.dao.AppStorePublisherMemberDAO;
 import cloudos.appstore.model.AppStoreAccount;
 import cloudos.appstore.model.AppStorePublisher;
 import cloudos.appstore.model.AppStorePublisherMember;
-import cloudos.model.auth.ApiToken;
+import org.cobbzilla.wizard.model.ApiToken;
 import cloudos.appstore.model.support.AppStoreAccountRegistration;
 import cloudos.appstore.model.support.RefreshTokenRequest;
 import com.qmino.miredot.annotations.ReturnType;

@@ -1,7 +1,7 @@
 package cloudos.appstore;
 
 import cloudos.appstore.model.*;
-import cloudos.model.auth.ApiToken;
+import org.cobbzilla.wizard.model.ApiToken;
 import cloudos.appstore.model.support.AppStoreAccountRegistration;
 import cloudos.appstore.test.AppStoreTestUtil;
 import cloudos.appstore.test.TestApp;

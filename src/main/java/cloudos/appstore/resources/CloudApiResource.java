@@ -4,7 +4,7 @@ import cloudos.appstore.ApiConstants;
 import cloudos.appstore.dao.ApiTokenDAO;
 import cloudos.appstore.dao.CloudAccountDAO;
 import cloudos.appstore.model.AppStoreCloudAccount;
-import cloudos.model.auth.ApiToken;
+import org.cobbzilla.wizard.model.ApiToken;
 import cloudos.appstore.model.support.CloudAccountSessionRequest;
 import cloudos.appstore.model.support.CloudOsSessionVerification;
 import com.qmino.miredot.annotations.ReturnType;
