@@ -45,8 +45,6 @@ public class AppStoreITBase extends ApiDocsResourceIT<AppStoreApiConfiguration, 
         return getConfigurationSources("appstore-config-test.yml");
     }
 
-    @Override protected Class<? extends AppStoreApiServer> getRestServerClass() { return AppStoreApiServer.class; }
-
     public static final String TEST_MANIFEST = "apps/simple-app-manifest.json";
     public static final String TEST_ICON = "apps/some-icon.png";
 

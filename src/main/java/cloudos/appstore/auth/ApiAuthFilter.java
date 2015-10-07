@@ -4,6 +4,7 @@ import cloudos.appstore.ApiConstants;
 import cloudos.appstore.model.AppStoreAccount;
 import com.sun.jersey.spi.container.ContainerRequest;
 import lombok.Getter;
+import org.cobbzilla.util.collection.SingletonSet;
 import org.cobbzilla.wizard.filters.auth.AuthFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,9 +19,7 @@ public class ApiAuthFilter extends AuthFilter<AppStoreAccount> {
 
     @Override protected String getAuthTokenHeader() { return ApiConstants.H_TOKEN; }
 
-    @Getter private final Set<String> skipAuthPaths = new HashSet<>(Arrays.asList(new String[]{
-            ApiConstants.AUTH_ENDPOINT
-    }));
+    @Getter private final Set<String> skipAuthPaths = new SingletonSet<>(ApiConstants.AUTH_ENDPOINT);
 
     @Getter private final Set<String> skipAuthPrefixes = new HashSet<>(Arrays.asList(new String[] {
             ApiConstants.APPSTORE_ENDPOINT,
